@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>✈️ 射飛機小遊戲</title>
+  <style>
+    body { margin: 0; background: #111; color: white; font-family: sans-serif; text-align: center; }
+    canvas { background: #222; display: block; margin: 20px auto; border: 2px solid #fff; }
+  </style>
+</head>
+<body>
+  <h1>✈️ 三角鐵機射飛碟</h1>
+  <p>方向鍵移動，空白鍵發射子彈，60秒內擊落敵人！</p>
+  <canvas id="game" width="800" height="500"></canvas>
+  <p id="info">得分：0｜剩餘時間：60</p>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    let score = 0;
+    let timeLeft = 60;
+    let bullets = [];
+    let enemies = [];
+    let keys = {};
+
+    const player = { x: 100, y: 220, size: 20, speed: 5 };
+
+    function drawPlayer() {
+      ctx.fillStyle = 'orange';
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y);
+      ctx.lineTo(player.x - player.size, player.y + player.size);
+      ctx.lineTo(player.x - player.size, player.y - player.size);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawBullet(bullet) {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(bullet.x, bullet.y, 10, 3);
+    }
+
+    function drawEnemy(enemy) {
+      ctx.fillStyle = 'lime';
+      ctx.font = '24px sans-serif';
+      ctx.fillText('🛸', enemy.x, enemy.y);
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 玩家移動
+      if (keys['ArrowUp']) player.y -= player.speed;
+      if (keys['ArrowDown']) player.y += player.speed;
+      if (keys['ArrowLeft']) player.x -= player.speed;
+      if (keys['ArrowRight']) player.x += player.speed;
+
+      player.y = Math.max(0, Math.min(canvas.height, player.y));
+      player.x = Math.max(0, Math.min(canvas.width, player.x));
+
+      // 畫玩家
+      drawPlayer();
+
+      // 更新與畫子彈
+      bullets.forEach((b, i) => {
+        b.x += 8;
+        drawBullet(b);
+        if (b.x > canvas.width) bullets.splice(i, 1);
+      });
+
+      // 生成敵人
+      if (Math.random() < 0.02) {
+        enemies.push({ x: canvas.width, y: Math.random() * canvas.height });
+      }
+
+      // 更新敵人與碰撞
+      enemies.forEach((e, ei) => {
+        e.x -= 2;
+        drawEnemy(e);
+
+        bullets.forEach((b, bi) => {
+          if (Math.abs(b.x - e.x) < 24 && Math.abs(b.y - e.y) < 24) {
+            enemies.splice(ei, 1);
+            bullets.splice(bi, 1);
+            score++;
+          }
+        });
+
+        // 敵機飛出畫面
+        if (e.x < 0) enemies.splice(ei, 1);
+      });
+
+      // 倒數時間
+      document.getElementById('info').innerText = `得分：${score}｜剩餘時間：${timeLeft}`;
+    }
+
+    // 控制鍵盤
+    document.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      if (e.key === ' ') {
+        bullets.push({ x: player.x + 5, y: player.y - 2 });
+      }
+    });
+
+    document.addEventListener('keyup', e => {
+      keys[e.key] = false;
+    });
+
+    function gameLoop() {
+      update();
+      if (timeLeft > 0) {
+        requestAnimationFrame(gameLoop);
+      } else {
+        alert(`遊戲結束！你的得分是 ${score}`);
+      }
+    }
+
+    setInterval(() => {
+      if (timeLeft > 0) timeLeft--;
+    }, 1000);
+
+    gameLoop();
+  </script>
+</body>
+</html>
