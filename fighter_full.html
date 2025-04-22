@@ -1,1177 +1,1793 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Shooter</title>
-    <style>
-        body {
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: black;
-            color: white;
-            font-family: Arial, sans-serif;
+// --- Constants ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const SCREEN_WIDTH = canvas.width;
+const SCREEN_HEIGHT = canvas.height;
+const FPS = 60;
+
+// Colors
+const WHITE = 'white';
+const BLACK = 'black';
+const RED = 'red';
+const GREEN = 'lime';
+const BLUE = 'blue';
+const YELLOW = 'yellow';
+const CYAN = 'cyan';
+const MAGENTA = 'magenta';
+const ORANGE = 'orange';
+
+// Player Settings (adjust dt scaling)
+const PLAYER_SPEED = 5 * FPS; // Speed in pixels per second
+const PLAYER_HP = 10;
+const PLAYER_SHOOT_DELAY_BASE = 100; // ms
+const PLAYER_SHOOT_COOLDOWN = 1000; // ms
+const PLAYER_SHOOT_DURATION = 10000; // ms
+
+// Missile Settings
+const MISSILE_SPEED = 7 * FPS; // pixels per second
+const MISSILE_DAMAGE = 3;
+const LOCK_ON_TIME = 1000; // ms
+
+// Bullet Settings
+const BULLET_SPEED = 10 * FPS; // pixels per second
+const BULLET_DAMAGE = 0.1;
+const BULLET_FONT_SIZE = 25;
+
+// Enemy Settings
+const ENEMY_SMALL_HP = 3;
+const ENEMY_SMALL_SPEED_X = 2 * FPS;
+const ENEMY_SMALL_SHOOT_DELAY = 1500; // ms
+const ENEMY_SMALL_BULLET_DAMAGE = 0.5;
+const ENEMY_SMALL_SCORE = 10;
+
+const ENEMY_MEDIUM_HP = 5;
+const ENEMY_MEDIUM_SPEED_X = 1.5 * FPS;
+const ENEMY_MEDIUM_SHOOT_DELAY = 1200; // ms
+const ENEMY_MEDIUM_MISSILE_DELAY = 5000; // ms
+const ENEMY_MEDIUM_BULLET_DAMAGE = 0.5;
+const ENEMY_MEDIUM_MISSILE_DAMAGE = 3;
+const ENEMY_MEDIUM_SCORE = 30;
+
+const ENEMY_BULLET_SPEED = 5 * FPS;
+const ENEMY_MISSILE_SPEED = 4 * FPS;
+
+// Boss Settings
+const BOSS_HP = 50;
+const BOSS_APPEAR_TIME = 35; // s (time remaining threshold)
+const BOSS_SPEED_Y = 3 * FPS;
+const BOSS_LASER_DELAY = 3000; // ms
+const BOSS_EVADE_DELAY = 10000; // ms
+const BOSS_WHIRLWIND_DELAY = 2000; // ms
+const BOSS_WHIRLWIND_THRESHOLD = 0.1; // 10% HP
+const BOSS_SCORE = 500;
+const BOSS_ABSORB_COOLDOWN = 5000; // ms
+const BOSS_ABSORB_RANGE = 300; // pixels
+const BOSS_EVADE_DURATION = 500; // ms
+
+// Powerup Settings
+const POWERUP_SPAWN_RATE = 4000; // ms base interval
+const POWERUP_DURATION = 8000; // ms lifetime
+const POWERUP_TYPES = ['M', 'S', 'D', 'H', 'L', 'B'];
+const POWERUP_SIZE = 20;
+const POWERUP_SPEED_Y = 1 * FPS;
+
+// Game Settings
+const GAME_DURATION = 60; // seconds
+
+// Font Settings
+const DEFAULT_FONT_FAMILY = "'Courier New', Courier, monospace"; // Match CSS
+
+// Utility Functions
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function getRandomFloat(min, max) {
+    return Math.random() * (max - min) + min;
+}
+function distance(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+// --- Pre-calculate Text Widths (Optimization) ---
+// Can be useful if performance becomes an issue, but adds complexity.
+// For now, we'll measure text during draw as needed.
+
+// --- Base GameObject (Conceptual) ---
+// We won't use a strict base class inheritance for everything due to
+// the varied nature of drawing text sprites, but keep the concept in mind.
+class GameObject {
+     constructor(x, y, width = 0, height = 0) {
+        this.x = x;
+        this.y = y;
+        this.width = width; // Will often be set after text measurement
+        this.height = height;
+        this.speedX = 0;
+        this.speedY = 0;
+        this.shouldRemove = false;
+    }
+
+    // Basic AABB collision - relies on width/height being set
+    collidesWith(other) {
+        if (!other || !this.width || !this.height || !other.width || !other.height) return false;
+        const rect1 = { x: this.x, y: this.y, width: this.width, height: this.height };
+        // Adjust for center positioning if needed, assuming top-left for now
+        // Example using center:
+        // const rect1 = { x: this.x - this.width/2, y: this.y - this.height/2, width: this.width, height: this.height };
+         const rect2 = { x: other.x, y: other.y, width: other.width, height: other.height };
+        // Example using center for other:
+        // const rect2 = { x: other.x - other.width/2, y: other.y - other.height/2, width: other.width, height: other.height };
+
+        return rect1.x < rect2.x + rect2.width &&
+               rect1.x + rect1.width > rect2.x &&
+               rect1.y < rect2.y + rect2.height &&
+               rect1.y + rect1.height > rect2.y;
+    }
+
+    // More accurate collision check for text-based sprites (using center points)
+    // Adjust radius calculation as needed based on how text is drawn
+    collidesWithTextSprite(other, radiusFactor = 0.7) {
+         if (!other || !this.width || !this.height || !other.width || !other.height) return false;
+         const radius1 = (this.width + this.height) / 4 * radiusFactor; // Avg radius estimate
+         const radius2 = (other.width + other.height) / 4 * radiusFactor;
+         const dist = distance(this.centerX, this.centerY, other.centerX, other.centerY);
+         return dist < radius1 + radius2;
+    }
+
+
+     // Getters for easier access to center/edges (assuming x,y is top-left)
+    get centerX() { return this.x + this.width / 2; }
+    get centerY() { return this.y + this.height / 2; }
+    get left() { return this.x; }
+    get right() { return this.x + this.width; }
+    get top() { return this.y; }
+    get bottom() { return this.y + this.height; }
+
+     // Basic update method
+     update(dt) {
+        this.x += this.speedX * dt;
+        this.y += this.speedY * dt;
+    }
+
+    // Placeholder draw - subclasses must implement
+    draw(ctx) {
+        // console.warn("Draw method not implemented for this object type!");
+    }
+
+    // Set dimensions based on rendered text
+    setDimensionsFromText(ctx, text, font) {
+        ctx.font = font; // Ensure context has the correct font
+        const metrics = ctx.measureText(text);
+        this.width = metrics.width;
+        // Estimating height - more complex with actual bounding boxes
+        const fontHeight = parseInt(font.match(/(\d+)px/)[1]); // Extract font size
+        this.height = fontHeight * 1.2; // Add some padding for height
+        // Adjust x,y if they represent center
+        // this.x -= this.width / 2;
+        // this.y -= this.height / 2;
+    }
+}
+
+
+// --- Player Class ---
+class Player extends GameObject {
+    constructor() {
+        super(10, SCREEN_HEIGHT / 2); // Start near left edge, center y
+        this.hp = PLAYER_HP;
+        this.maxHp = PLAYER_HP;
+        this.speed = PLAYER_SPEED;
+        this.lastShotTime = performance.now();
+        this.shootingStartTime = performance.now();
+        this.isShooting = false;
+        this.onCooldown = false;
+        this.lockTarget = null;
+        this.lockOnStartTime = 0;
+        this.lockOnStage = 0; // 0: none, 1: locking, 2: locked (momentary)
+
+        this.missileLevel = 0;
+        this.shootLevel = 0;
+        this.drones = []; // Array to hold Drone instances
+        this.l_stage = 0;
+        this.h_rain_active = false;
+        this.h_rain_end_time = 0;
+        this.b_collected = 0;
+
+        this.shootDelay = PLAYER_SHOOT_DELAY_BASE;
+        this.missileLockTime = LOCK_ON_TIME;
+        this.currentMissileSpeed = MISSILE_SPEED;
+
+        // Text Sprite setup
+        this.textBody = ">";
+        this.textWingL = "<";
+        this.textWingR = ">";
+        this.fontStyle = `bold 30px ${DEFAULT_FONT_FAMILY}`;
+        this.color = CYAN;
+        this.wingSpacing = 2; // Pixels between parts
+
+        // Calculate initial dimensions (important for collision)
+        this.calculateDimensions(ctx);
+        this.y -= this.height / 2; // Adjust y to be true center
+    }
+
+    calculateDimensions(ctx) {
+        ctx.font = this.fontStyle;
+        const bodyMetrics = ctx.measureText(this.textBody);
+        const wingLMetrics = ctx.measureText(this.textWingL);
+        const wingRMetrics = ctx.measureText(this.textWingR);
+        this.width = wingLMetrics.width + this.wingSpacing + bodyMetrics.width + this.wingSpacing + wingRMetrics.width;
+        // Estimate height from font size
+        const fontSize = parseInt(this.fontStyle.match(/(\d+)px/)[1]);
+        this.height = fontSize * 1.2; // Add padding
+
+        // Store offsets for drawing
+        this.wingLOffset = 0;
+        this.bodyOffset = wingLMetrics.width + this.wingSpacing;
+        this.wingROffset = this.bodyOffset + bodyMetrics.width + this.wingSpacing;
+    }
+
+    update(dt) {
+        // --- Movement ---
+        let targetSpeedX = 0;
+        let targetSpeedY = 0;
+        if (keysPressed['ArrowLeft'] || keysPressed['a']) targetSpeedX = -this.speed;
+        if (keysPressed['ArrowRight'] || keysPressed['d']) targetSpeedX = this.speed;
+        if (keysPressed['ArrowUp'] || keysPressed['w']) targetSpeedY = -this.speed;
+        if (keysPressed['ArrowDown'] || keysPressed['s']) targetSpeedY = this.speed;
+
+        // Diagonal movement normalization (optional but good)
+        if (targetSpeedX !== 0 && targetSpeedY !== 0) {
+            const factor = 1 / Math.sqrt(2);
+            targetSpeedX *= factor;
+            targetSpeedY *= factor;
         }
-        canvas {
-            border: 1px solid white;
-        }
-        .controls {
-            margin-top: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 5px;
-        }
-        .control-button {
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.5);
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-        .control-button:active {
-            background: rgba(200, 200, 200, 0.8);
-        }
-    </style>
-</head>
-<body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div class="controls">
-        <button id="btnUp" class="control-button">↑</button>
-        <button id="btnDown" class="control-button">↓</button>
-        <button id="btnLeft" class="control-button">←</button>
-        <button id="btnRight" class="control-button">→</button>
-        <button id="btnFire" class="control-button">Fire</button>
-        <button id="btnMissile" class="control-button">Missile</button>
-    </div>
-    <script>
-        // --- Basic Setup ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const SCREEN_WIDTH = canvas.width;
-        const SCREEN_HEIGHT = canvas.height;
 
-        // Colors
-        const WHITE = 'white';
-        const BLACK = 'black';
-        const RED = 'red';
-        const GREEN = 'lime';
-        const BLUE = 'blue';
-        const YELLOW = 'yellow';
-        const CYAN = 'cyan';
-        const MAGENTA = 'magenta';
-        const ORANGE = 'orange';
-        const LIGHT_BLUE = '#ADD8E6';
-        const PINK = '#FFC0CB';
+        this.x += targetSpeedX * dt;
+        this.y += targetSpeedY * dt;
 
-        // Game Parameters
-        const FPS = 60;
-        const GAME_DURATION = 60; // seconds
-        const PLAYER_HP = 10;
-        const BULLET_DAMAGE = 0.5;
-        const ENEMY_BULLET_DAMAGE = 1;
-        const MISSILE_DAMAGE = 3;
-        const BOSS_HP = 100;
-        const POWERUP_TYPES = ['M', 'S', 'D', 'H', 'L', 'B'];
-        const INVINCIBILITY_DURATION = 1500;
-        const PHOENIX_INVINCIBILITY_DURATION = 3000;
-        const PHOENIX_COOLDOWN = 5000;
-        const SHIELD_DURATION = 5000;
+        // --- Boundary Checks ---
+        this.x = Math.max(0, Math.min(SCREEN_WIDTH - this.width, this.x));
+        this.y = Math.max(0, Math.min(SCREEN_HEIGHT - this.height, this.y));
 
-        // --- Game State ---
-        let score = 0;
-        let gameStartTime = performance.now();
-        let timeRemaining = GAME_DURATION;
-        let isGameOver = false;
-        let animationFrameId;
-        let lastTime = 0;
-        let keysPressed = {};
-
-        // --- Game Object Arrays ---
-        let player;
-        let wingman = null;
-        let playerBullets = [];
-        let playerMissiles = [];
-        let enemies = [];
-        let enemyBullets = [];
-        let enemyMissiles = [];
-        let powerups = [];
-        let boss = null;
-        let effects = [];
-
-        // --- Utility Functions ---
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
+        // --- Shooting Cooldown Logic ---
+        const now = performance.now();
+        if (this.onCooldown && now - this.shootingStartTime > PLAYER_SHOOT_DURATION + PLAYER_SHOOT_COOLDOWN) {
+            this.onCooldown = false;
+            this.isShooting = false; // Reset shooting state when cooldown ends
         }
-        function getRandomFloat(min, max) {
-            return Math.random() * (max - min) + min;
-        }
-        function distance(x1, y1, x2, y2) {
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            return Math.sqrt(dx * dx + dy * dy);
+        if (this.isShooting && !this.onCooldown && now - this.shootingStartTime > PLAYER_SHOOT_DURATION) {
+            this.onCooldown = true;
+            console.log("Player shooting cooldown activated");
         }
 
-        // --- Class Definitions ---
-
-        class GameObject {
-            constructor(x, y, width, height, color) {
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
-                this.color = color;
-                this.speedX = 0;
-                this.speedY = 0;
-                this.shouldRemove = false;
+        // --- Shooting Action ---
+        if (!this.onCooldown) {
+            if (!this.isShooting) { // Start shooting cycle
+                this.isShooting = true;
+                this.shootingStartTime = now;
+                 console.log("Player shooting started");
             }
-
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
-
-            update(dt) {
-                this.x += this.speedX * dt;
-                this.y += this.speedY * dt;
-            }
-
-            get centerX() { return this.x + this.width / 2; }
-            get centerY() { return this.y + this.height / 2; }
-
-            collidesWith(other) {
-                if (!other) return false;
-                return this.x < other.x + other.width &&
-                       this.x + this.width > other.x &&
-                       this.y < other.y + other.height &&
-                       this.y + this.height > other.y;
-            }
-        }
-
-        class Player extends GameObject {
-            constructor() {
-                super(SCREEN_WIDTH / 2 - 25, SCREEN_HEIGHT - 60, 40, 40, GREEN);
-                this.hp = PLAYER_HP;
-                this.maxHp = PLAYER_HP;
-                this.speed = 300;
-                this.shootDelay = 200;
-                this.lastShotTime = 0;
-                this.missileDelay = 1000;
-                this.lastMissileTime = 0;
-                this.hasDrone = false;
-                this.b_collected = 0;
-                this.on_cooldown = false;
-                this.cooldownTimer = 0;
-                this.invincible = false;
-                this.invincibleTimer = 0;
-                this.canShootMissile = false;
-                this.shieldActive = false;
-                this.shieldTimer = 0;
-                this.flicker = false;
-            }
-
-            update(dt) {
-                if (this.invincible) {
-                    this.invincibleTimer -= dt * 1000;
-                    this.flicker = !this.flicker;
-                    if (this.invincibleTimer <= 0) {
-                        this.invincible = false;
-                        this.flicker = false;
-                    }
-                } else {
-                    this.flicker = false;
-                }
-                if (this.shieldActive) {
-                    this.shieldTimer -= dt * 1000;
-                    if (this.shieldTimer <= 0) {
-                        this.shieldActive = false;
-                        console.log("Shield down!");
-                    }
-                }
-
-                if (this.on_cooldown) {
-                    this.cooldownTimer -= dt * 1000;
-                    if (this.cooldownTimer <= 0) {
-                        this.on_cooldown = false;
-                    }
-                }
-
-                this.speedX = 0;
-                this.speedY = 0;
-                if (keysPressed['ArrowLeft'] || keysPressed['a']) this.speedX = -this.speed;
-                if (keysPressed['ArrowRight'] || keysPressed['d']) this.speedX = this.speed;
-                if (keysPressed['ArrowUp'] || keysPressed['w']) this.speedY = -this.speed;
-                if (keysPressed['ArrowDown'] || keysPressed['s']) this.speedY = this.speed;
-
-                super.update(dt);
-
-                this.x = Math.max(0, Math.min(SCREEN_WIDTH - this.width, this.x));
-                this.y = Math.max(0, Math.min(SCREEN_HEIGHT - this.height, this.y));
-
-                const now = performance.now();
-                if (keysPressed[' '] && now - this.lastShotTime > this.shootDelay) {
-                    this.shoot();
-                    this.lastShotTime = now;
-                }
-                if (this.canShootMissile && keysPressed['m'] && now - this.lastMissileTime > this.missileDelay) {
-                    this.launchMissile();
-                    this.lastMissileTime = now;
-                }
-            }
-
-            shoot() {
-                const bullet = new Bullet(this.centerX - 2.5, this.y, 5, 10, YELLOW);
-                bullet.speedY = -500;
-                playerBullets.push(bullet);
-            }
-
-            launchMissile() {
-                console.log("Launching Missile");
-                let target = null;
-                let minDistance = Infinity;
-                const potentialTargets = [...enemies, boss].filter(e => e !== null);
-                potentialTargets.forEach(enemy => {
-                    const d = distance(this.centerX, this.centerY, enemy.centerX, enemy.centerY);
-                    if (d < minDistance) {
-                        minDistance = d;
-                        target = enemy;
-                    }
-                });
-                const missile = new Missile(this.centerX - 5, this.y, 10, 15, PINK, target);
-                playerMissiles.push(missile);
-            }
-
-            applyPowerup(type) {
-                console.log("Applying powerup:", type);
-                if (type === 'H') {
-                    this.hp = Math.min(this.maxHp, this.hp + 3);
-                    console.log("HP Increased!");
-                } else if (type === 'S') {
-                    this.shootDelay = Math.max(80, this.shootDelay * 0.85);
-                    console.log("Fire Rate Increased!");
-                } else if (type === 'D') {
-                    if (!this.hasDrone) {
-                        this.hasDrone = true;
-                        console.log("Drone Deployed!");
-                        wingman = new Wingman(this);
-                    }
-                } else if (type === 'B') {
-                    this.b_collected = Math.min(3, this.b_collected + 1);
-                    console.log("Phoenix Part Collected!");
-                    if (this.b_collected === 3 && !this.on_cooldown) {
-                        this.activatePhoenix();
-                    }
-                } else if (type === 'M') {
-                    this.canShootMissile = true;
-                    console.log("Missiles Enabled!");
-                } else if (type === 'L') {
-                    this.shieldActive = true;
-                    this.shieldTimer = SHIELD_DURATION;
-                    console.log("Shield Activated!");
-                }
-            }
-
-            activatePhoenix() {
-                console.log("PHOENIX ACTIVE!");
-                enemies = enemies.filter(e => e instanceof Boss);
-                enemyBullets = [];
-                effects.push(new ScreenFlash(WHITE, 200));
-                this.b_collected = 0;
-                this.on_cooldown = true;
-                this.cooldownTimer = PHOENIX_COOLDOWN;
-                this.invincible = true;
-                this.invincibleTimer = PHOENIX_INVINCIBILITY_DURATION;
-            }
-
-            takeDamage(amount) {
-                if (this.invincible || this.shieldActive) return;
-                this.hp -= amount;
-                console.log(`Player took ${amount} damage, HP: ${this.hp}`);
-                if (this.hp <= 0) {
-                    this.hp = 0;
-                    this.shouldRemove = true;
-                    effects.push(new Explosion(this.centerX, this.centerY, this.width * 1.5, RED, 500));
-                    gameOver();
-                } else {
-                    this.invincible = true;
-                    this.invincibleTimer = INVINCIBILITY_DURATION;
-                    this.flicker = true;
-                    effects.push(new ScreenFlash(RED, 100));
-                }
-            }
-
-            draw() {
-                if (this.shieldActive) {
-                    ctx.beginPath();
-                    ctx.arc(this.centerX, this.centerY, this.width * 0.8, 0, Math.PI * 2);
-                    ctx.strokeStyle = LIGHT_BLUE;
-                    ctx.lineWidth = 3;
-                    ctx.globalAlpha = 0.6 + Math.sin(performance.now() / 100) * 0.2;
-                    ctx.stroke();
-                    ctx.globalAlpha = 1.0;
-                    ctx.lineWidth = 1;
-                }
-                if (this.invincible && this.flicker) {
-                    return;
-                }
-                super.draw();
+            // Check shoot delay
+            if (now - this.lastShotTime > this.shootDelay) {
+                this.lastShotTime = now;
+                this.shoot();
             }
         }
 
-        class Bullet extends GameObject {
-            constructor(x, y, width, height, color) {
-                super(x, y, width, height, color);
-                this.damage = BULLET_DAMAGE;
-            }
+        // --- Update Lock-on ---
+        this._update_lock_on(now);
 
-            update(dt) {
-                super.update(dt);
-                if (this.y + this.height < 0) {
-                    this.shouldRemove = true;
-                }
-            }
-        }
-
-        class EnemyBullet extends GameObject {
-            constructor(x, y, width, height, color, speedX = 0, speedY = 200) {
-                super(x, y, width, height, color);
-                this.damage = ENEMY_BULLET_DAMAGE;
-                this.speedX = speedX;
-                this.speedY = speedY;
-            }
-
-            update(dt) {
-                super.update(dt);
-                if (this.y > SCREEN_HEIGHT) {
-                    this.shouldRemove = true;
-                }
-            }
-        }
-
-        class Missile extends GameObject {
-            constructor(x, y, width, height, color, target = null) {
-                super(x, y, width, height, color);
-                this.damage = MISSILE_DAMAGE;
-                this.speed = 400;
-                this.turnRate = Math.PI * 2;
-                this.target = target;
-                this.lifetime = 5000;
-            }
-
-            update(dt) {
-                this.lifetime -= dt * 1000;
-                if (this.lifetime <= 0) {
-                    this.shouldRemove = true;
-                    return;
-                }
-                if (this.target && !this.target.shouldRemove) {
-                    const targetX = this.target.centerX;
-                    const targetY = this.target.centerY;
-                    const dx = targetX - this.centerX;
-                    const dy = targetY - this.centerY;
-                    const targetAngle = Math.atan2(dy, dx);
-                    const currentAngle = Math.atan2(this.speedY, this.speedX);
-                    let angleDiff = targetAngle - currentAngle;
-                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                    const turnAmount = Math.min(Math.abs(angleDiff), this.turnRate * dt);
-                    const newAngle = currentAngle + Math.sign(angleDiff) * turnAmount;
-                    this.speedX = Math.cos(newAngle) * this.speed;
-                    this.speedY = Math.sin(newAngle) * this.speed;
-                } else {
-                    if (this.speedY === 0 && this.speedX === 0) {
-                        this.speedY = -this.speed;
-                    }
-                }
-                super.update(dt);
-                if (this.y + this.height < 0 || this.y > SCREEN_HEIGHT || this.x + this.width < 0 || this.x > SCREEN_WIDTH) {
-                    this.shouldRemove = true;
-                }
-            }
-
-            draw() {
-                ctx.save();
-                ctx.translate(this.centerX, this.centerY);
-                ctx.rotate(Math.atan2(this.speedY, this.speedX) + Math.PI / 2);
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.moveTo(0, -this.height / 2);
-                ctx.lineTo(-this.width / 2, this.height / 2);
-                ctx.lineTo(this.width / 2, this.height / 2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        class Wingman {
-            constructor(player) {
-                this.player = player;
-                this.width = 20;
-                this.height = 20;
-                this.offsetX = -40;
-                this.offsetY = 0;
-                this.x = player.centerX + this.offsetX - this.width / 2;
-                this.y = player.centerY + this.offsetY - this.height / 2;
-                this.hp = 5;
-                this.maxHp = 5;
-                this.lastShotTime = performance.now();
-                this.shootDelay = 450;
-                this.color = CYAN;
-                this.font = "bold 20px Arial";
-                this.shouldRemove = false;
-            }
-
-            update(dt) {
-                this.x = this.player.centerX + this.offsetX - this.width / 2;
-                this.y = this.player.centerY + this.offsetY - this.height / 2;
-                const now = performance.now();
-                if (now - this.lastShotTime > this.shootDelay) {
-                    this.lastShotTime = now;
-                    const bullet = new Bullet(this.x + this.width / 2 - 2.5, this.y, 5, 10, this.color);
-                    bullet.speedY = -400;
-                    playerBullets.push(bullet);
-                }
-                enemyBullets.forEach((bullet) => {
-                    if (!bullet.shouldRemove && this.collidesWith(bullet)) {
-                        this.hp -= bullet.damage;
-                        bullet.shouldRemove = true;
-                        effects.push(new Explosion(bullet.centerX, bullet.centerY, 10, bullet.color, 100));
-                    }
-                });
-                enemies.forEach((enemy) => {
-                    if (!enemy.shouldRemove && this.collidesWith(enemy)) {
-                        this.hp -= 1;
-                        enemy.hp -= 1;
-                        if (enemy.hp <= 0) enemy.shouldRemove = true;
-                        effects.push(new Explosion(this.x + this.width/2, this.y + this.height/2, 15, RED, 150));
-                    }
-                });
-                if (this.hp <= 0) {
-                    this.player.hasDrone = false;
-                    wingman = null;
-                    effects.push(new Explosion(this.x + this.width/2, this.y + this.height/2, this.width * 1.5, this.color, 400));
-                    console.log("Drone Destroyed!");
-                }
-            }
-
-            draw() {
-                ctx.font = this.font;
-                ctx.fillStyle = this.color;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText("D", this.x + this.width / 2, this.y + this.height / 2);
-                if (this.hp > 0) {
-                    const barWidth = this.width;
-                    const barHeight = 5;
-                    const hpRatio = this.hp / this.maxHp;
-                    const hpBarWidth = barWidth * hpRatio;
-                    const barX = this.x;
-                    const barY = this.y - barHeight - 2;
-                    ctx.fillStyle = RED;
-                    ctx.fillRect(barX, barY, barWidth, barHeight);
-                    ctx.fillStyle = GREEN;
-                    ctx.fillRect(barX, barY, hpBarWidth, barHeight);
-                }
-            }
-
-            collidesWith(other) {
-                if (!other) return false;
-                return this.x < other.x + other.width &&
-                       this.x + this.width > other.x &&
-                       this.y < other.y + other.height &&
-                       this.y + this.height > other.y;
-            }
-        }
-
-        class EnemySmall extends GameObject {
-            constructor(x, y) {
-                super(x, y, 30, 30, RED);
-                this.hp = 1;
-                this.speedY = 100;
-                this.scoreValue = 10;
-                this.shootTimer = 0;
-                this.shootInterval = getRandomFloat(1500, 3000);
-            }
-
-            update(dt) {
-                super.update(dt);
-                if (this.y > SCREEN_HEIGHT) {
-                    this.shouldRemove = true;
-                }
-                this.shootTimer += dt * 1000;
-                if (this.shootTimer >= this.shootInterval) {
-                    this.shootTimer = 0;
-                    this.shoot();
-                }
-            }
-
-            shoot() {
-                const bullet = new EnemyBullet(this.centerX - 3, this.y + this.height, 6, 12, ORANGE);
-                bullet.speedY = 250;
-                enemyBullets.push(bullet);
-            }
-        }
-
-        class EnemyMedium extends GameObject {
-            constructor(x, y) {
-                super(x, y, 45, 40, MAGENTA);
-                this.hp = 4;
-                this.speedY = 70;
-                this.scoreValue = 30;
-                this.baseX = x;
-                this.moveTimer = Math.random() * 10;
-                this.amplitude = getRandomFloat(40, 80);
-                this.frequency = getRandomFloat(1.5, 2.5);
-                this.shootTimer = 0;
-                this.shootInterval = getRandomFloat(1200, 2500);
-            }
-
-            update(dt) {
-                super.update(dt);
-                this.moveTimer += dt;
-                this.x = this.baseX + Math.sin(this.moveTimer * this.frequency) * this.amplitude;
-                this.x = Math.max(0, Math.min(SCREEN_WIDTH - this.width, this.x));
-                if (this.y > SCREEN_HEIGHT) {
-                    this.shouldRemove = true;
-                }
-                this.shootTimer += dt * 1000;
-                if (this.shootTimer >= this.shootInterval) {
-                    this.shootTimer = 0;
-                    this.shoot();
-                }
-            }
-
-            shoot() {
-                const speeds = [-50, 0, 50];
-                speeds.forEach(sx => {
-                    const bullet = new EnemyBullet(this.centerX - 3, this.y + this.height, 5, 10, CYAN, sx, 200);
-                    enemyBullets.push(bullet);
-                });
-            }
-        }
-
-        class Boss extends GameObject {
-            constructor() {
-                super(SCREEN_WIDTH / 2 - 50, -100, 100, 80, ORANGE);
-                this.hp = BOSS_HP;
-                this.maxHp = BOSS_HP;
-                this.speedX = 100;
-                this.speedY = 50;
-                this.scoreValue = 500;
-                this.onScreenY = 50;
-                this.isOnScreen = false;
-                this.attackPattern = 0;
-                this.patternTimer = 0;
-                this.shootTimer = 0;
-                this.lastAttackChange = performance.now();
-                this.attackDuration = 8000;
-            }
-
-            update(dt) {
-                if (!this.isOnScreen) {
-                    this.y += this.speedY * dt;
-                    if (this.y >= this.onScreenY) {
-                        this.y = this.onScreenY;
-                        this.isOnScreen = true;
-                        this.speedY = 0;
-                        this.lastAttackChange = performance.now();
-                    }
-                    return;
-                }
-                this.x += this.speedX * dt;
-                if (this.x <= 0 || this.x + this.width >= SCREEN_WIDTH) {
-                    this.speedX *= -1;
-                    this.x = Math.max(0, Math.min(SCREEN_WIDTH - this.width, this.x));
-                }
-                this.patternTimer += dt * 1000;
-                this.shootTimer += dt * 1000;
-                const now = performance.now();
-                if (now - this.lastAttackChange > this.attackDuration) {
-                    this.attackPattern = (this.attackPattern + 1) % 3;
-                    this.lastAttackChange = now;
-                    this.patternTimer = 0;
-                    console.log(`Boss changing to attack pattern ${this.attackPattern}`);
-                    if (this.attackPattern === 1) this.speedX = 150; else this.speedX = 100;
-                }
-                switch (this.attackPattern) {
-                    case 0:
-                        if (this.shootTimer > 800) {
-                            this.shootVolley();
-                            this.shootTimer = 0;
-                        }
-                        break;
-                    case 1:
-                        if (this.shootTimer > 500) {
-                            this.shootSpread();
-                            this.shootTimer = 0;
-                        }
-                        break;
-                    case 2:
-                        if (this.shootTimer > 1200) {
-                            this.shootAimed();
-                            this.shootTimer = 0;
-                        }
-                        break;
-                }
-            }
-
-            shootVolley() {
-                console.log("Boss: Volley");
-                const numBullets = 5;
-                const spacing = this.width / (numBullets + 1);
-                for (let i = 1; i <= numBullets; i++) {
-                    const bx = this.x + i * spacing;
-                    const bullet = new EnemyBullet(bx - 3, this.y + this.height, 6, 12, RED, 0, 200);
-                    enemyBullets.push(bullet);
-                }
-            }
-
-            shootSpread() {
-                console.log("Boss: Spread");
-                const numBullets = 7;
-                const angleStep = Math.PI / (numBullets - 1);
-                const startAngle = Math.PI / 2 - (Math.PI / 2);
-                const speed = 180;
-                for (let i = 0; i < numBullets; i++) {
-                    const angle = startAngle + (i - Math.floor(numBullets/2)) * angleStep * 0.5;
-                    const sx = Math.cos(angle) * speed;
-                    const sy = Math.sin(angle) * speed;
-                    const bullet = new EnemyBullet(this.centerX - 4, this.centerY, 8, 8, MAGENTA, sx, sy);
-                    enemyBullets.push(bullet);
-                }
-            }
-
-            shootAimed() {
-                console.log("Boss: Aimed Shot");
-                if (!player || player.shouldRemove) return;
-                const dx = player.centerX - this.centerX;
-                const dy = player.centerY - this.centerY;
-                const angle = Math.atan2(dy, dx);
-                const speed = 280;
-                const sx = Math.cos(angle) * speed;
-                const sy = Math.sin(angle) * speed;
-                const bullet = new EnemyBullet(this.centerX - 5, this.centerY, 10, 10, YELLOW, sx, sy);
-                enemyBullets.push(bullet);
-            }
-
-            draw() {
-                super.draw();
-                const hpBarWidth = SCREEN_WIDTH * 0.8;
-                const currentHpWidth = hpBarWidth * Math.max(0, this.hp / this.maxHp);
-                const barX = SCREEN_WIDTH * 0.1;
-                const barY = 5;
-                ctx.fillStyle = '#555';
-                ctx.fillRect(barX, barY, hpBarWidth, 15);
-                ctx.fillStyle = RED;
-                ctx.fillRect(barX, barY, hpBarWidth, 15);
-                ctx.fillStyle = ORANGE;
-                ctx.fillRect(barX, barY, currentHpWidth, 15);
-                ctx.strokeStyle = WHITE;
-                ctx.strokeRect(barX, barY, hpBarWidth, 15);
-                ctx.fillStyle = WHITE;
-                ctx.font = "14px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(`BOSS HP: ${Math.ceil(this.hp)} / ${this.maxHp}`, SCREEN_WIDTH / 2, barY + 8);
-            }
-        }
-
-        class Powerup extends GameObject {
-            constructor(x, y, type) {
-                let color = WHITE;
-                if (type === 'H') color = GREEN;
-                else if (type === 'S') color = YELLOW;
-                else if (type === 'D') color = CYAN;
-                else if (type === 'B') color = ORANGE;
-                else if (type === 'M') color = PINK;
-                else if (type === 'L') color = LIGHT_BLUE;
-                super(x, y, 20, 20, color);
-                this.type = type;
-                this.speedY = 80;
-                this.font = "bold 16px Arial";
-            }
-
-            update(dt) {
-                super.update(dt);
-                if (this.y > SCREEN_HEIGHT) {
-                    this.shouldRemove = true;
-                }
-            }
-
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                ctx.font = this.font;
-                ctx.fillStyle = BLACK;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(this.type, this.x + this.width / 2, this.y + this.height / 2 + 1);
-            }
-        }
-
-        class Explosion extends GameObject {
-            constructor(x, y, size, color, duration) {
-                super(x - size / 2, y - size / 2, size, size, color);
-                this.initialSize = size;
-                this.duration = duration;
-                this.life = duration;
-                this.isEffect = true;
-            }
-
-            update(dt) {
-                this.life -= dt * 1000;
-                if (this.life <= 0) {
-                    this.shouldRemove = true;
-                }
-                const progress = this.life / this.duration;
-                const currentSize = this.initialSize * (1 - progress);
-                this.x = this.x + this.width/2 - currentSize/2;
-                this.y = this.y + this.height/2 - currentSize/2;
-                this.width = currentSize;
-                this.height = currentSize;
-            }
-
-            draw() {
-                const alpha = this.life / this.duration;
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-        }
-
-        class ScreenFlash extends GameObject {
-            constructor(color, duration) {
-                super(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color);
-                this.duration = duration;
-                this.life = duration;
-                this.isEffect = true;
-            }
-
-            update(dt) {
-                this.life -= dt * 1000;
-                if (this.life <= 0) {
-                    this.shouldRemove = true;
-                }
-            }
-
-            draw() {
-                const alpha = (this.life / this.duration) * 0.7;
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = alpha;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                ctx.globalAlpha = 1.0;
-            }
-        }
-
-        let lastEnemySpawnTime = 0;
-        let enemySpawnInterval = 1500;
-        let minEnemySpawnInterval = 500;
-        let enemySpawnRateIncrease = 20;
-        let lastPowerupSpawnTime = 0;
-        let powerupSpawnInterval = 10000;
-        let bossSpawnTimeThreshold = GAME_DURATION * 0.6;
-        let bossSpawned = false;
-
-        function updateSpawners(dt, elapsedTime) {
-            const now = performance.now();
-            if (!boss) {
-                enemySpawnInterval = Math.max(minEnemySpawnInterval, 1500 - elapsedTime * enemySpawnRateIncrease);
-            }
-            if (!boss && now - lastEnemySpawnTime > enemySpawnInterval) {
-                spawnEnemy();
-                lastEnemySpawnTime = now;
-            }
-            if (now - lastPowerupSpawnTime > powerupSpawnInterval) {
-                spawnPowerup();
-                lastPowerupSpawnTime = now;
-            }
-            if (!bossSpawned && elapsedTime >= bossSpawnTimeThreshold) {
-                spawnBoss();
-            }
-        }
-
-        function spawnEnemy() {
-            const edgeMargin = 30;
-            const x = getRandomInt(edgeMargin, SCREEN_WIDTH - edgeMargin - 45);
-            const y = -40;
-            let enemy;
-            const spawnMediumChance = 0.3 + (elapsedTime / GAME_DURATION) * 0.3;
-            if (Math.random() < spawnMediumChance) {
-                enemy = new EnemyMedium(x, y);
+        // --- Update H-Rain ---
+        if (this.h_rain_active) {
+            if (now > this.h_rain_end_time) {
+                this.h_rain_active = false;
             } else {
-                enemy = new EnemySmall(x, y);
-            }
-            enemies.push(enemy);
-        }
-
-        function spawnPowerup() {
-            const x = getRandomInt(50, SCREEN_WIDTH - 70);
-            const y = -20;
-            const type = POWERUP_TYPES[getRandomInt(0, POWERUP_TYPES.length - 1)];
-            powerups.push(new Powerup(x, y, type));
-        }
-
-        function spawnBoss() {
-            if (!boss && !bossSpawned) {
-                boss = new Boss();
-                bossSpawned = true;
-                console.log("BOSS SPAWNING!");
+                // Increased rain density
+                if (Math.random() < 0.6) { // ~36 times per second at 60fps
+                    const h_bullet = new HRainBullet(getRandomInt(0, SCREEN_WIDTH), 0);
+                    gameObjects.bullets.player.push(h_bullet);
+                }
             }
         }
 
-        function handleCollisions() {
-            playerBullets.forEach((bullet) => {
-                if (bullet.shouldRemove) return;
-                enemies.forEach((enemy) => {
-                    if (!enemy.shouldRemove && bullet.collidesWith(enemy)) {
-                        enemy.hp -= bullet.damage;
-                        bullet.shouldRemove = true;
-                        effects.push(new Explosion(bullet.centerX, bullet.centerY, 10, bullet.color, 100));
-                        if (enemy.hp <= 0) {
-                            enemy.shouldRemove = true;
-                            score += enemy.scoreValue;
-                            effects.push(new Explosion(enemy.centerX, enemy.centerY, enemy.width * 1.2, enemy.color, 300));
-                            if (Math.random() < 0.15) {
-                                powerups.push(new Powerup(enemy.centerX, enemy.centerY, POWERUP_TYPES[getRandomInt(0, POWERUP_TYPES.length - 1)]));
-                            }
-                        }
-                    }
-                });
-                if (boss && !boss.shouldRemove && bullet.collidesWith(boss)) {
-                    boss.hp -= bullet.damage;
-                    bullet.shouldRemove = true;
-                    effects.push(new Explosion(bullet.centerX, bullet.centerY, 15, bullet.color, 150));
-                    if (boss.hp <= 0) {
-                        boss.shouldRemove = true;
-                        score += boss.scoreValue;
-                        effects.push(new Explosion(boss.centerX, boss.centerY, boss.width * 1.5, boss.color, 1000));
-                        console.log("BOSS DEFEATED!");
-                        boss = null;
-                    }
-                }
-            });
-            playerMissiles.forEach((missile) => {
-                if (missile.shouldRemove) return;
-                enemies.forEach((enemy) => {
-                    if (!enemy.shouldRemove && missile.collidesWith(enemy)) {
-                        enemy.hp -= missile.damage;
-                        missile.shouldRemove = true;
-                        effects.push(new Explosion(missile.centerX, missile.centerY, 30, missile.color, 250));
-                        if (enemy.hp <= 0) {
-                            enemy.shouldRemove = true;
-                            score += enemy.scoreValue;
-                            effects.push(new Explosion(enemy.centerX, enemy.centerY, enemy.width * 1.2, enemy.color, 300));
-                            if (Math.random() < 0.15) {
-                                powerups.push(new Powerup(enemy.centerX, enemy.centerY, POWERUP_TYPES[getRandomInt(0, POWERUP_TYPES.length - 1)]));
-                            }
-                        }
-                    }
-                });
-                if (boss && !boss.shouldRemove && missile.collidesWith(boss)) {
-                    boss.hp -= missile.damage;
-                    missile.shouldRemove = true;
-                    effects.push(new Explosion(missile.centerX, missile.centerY, 40, missile.color, 300));
-                    if (boss.hp <= 0) {
-                        boss.shouldRemove = true;
-                        score += boss.scoreValue;
-                        effects.push(new Explosion(boss.centerX, boss.centerY, boss.width * 1.5, boss.color, 1000));
-                        console.log("BOSS DEFEATED!");
-                        boss = null;
+        // --- Update Drones (they update themselves via game loop) ---
+        // Filter out dead drones (although Drone update handles self-removal)
+        this.drones = this.drones.filter(d => !d.shouldRemove);
+    }
+
+    shoot() {
+        const spawnX = this.right; // Use getter for right edge
+        const spawnY = this.centerY; // Use getter for center y
+
+        if (this.l_stage === 0) {
+            const bullet = new Bullet(spawnX, spawnY);
+            gameObjects.bullets.player.push(bullet);
+        } else if (this.l_stage === 1) {
+            const bullet = new LBullet(spawnX, spawnY);
+            gameObjects.bullets.player.push(bullet);
+        } else if (this.l_stage === 2) {
+            const offset = 10;
+            gameObjects.bullets.player.push(new LBullet(spawnX, spawnY - offset));
+            gameObjects.bullets.player.push(new LBullet(spawnX, spawnY + offset));
+        } else if (this.l_stage >= 3) {
+            const offset = 15;
+            gameObjects.bullets.player.push(new LBullet(spawnX, spawnY));
+            gameObjects.bullets.player.push(new LBullet(spawnX, spawnY - offset));
+            gameObjects.bullets.player.push(new LBullet(spawnX, spawnY + offset));
+        }
+    }
+
+    _update_lock_on(now) {
+        // Target validation
+        if (this.lockTarget && (this.lockTarget.shouldRemove || this.lockTarget.right < 0)) {
+            this._reset_lock();
+        }
+
+        // Acquire new target if needed
+        if (!this.lockTarget) {
+            let closestEnemy = null;
+            let min_dist_sq = Infinity; //(SCREEN_WIDTH * 0.8) ** 2; // Max lock range squared
+            const playerFrontX = this.right;
+
+            gameObjects.enemies.forEach(enemy => {
+                if (enemy.left > playerFrontX) { // Only target enemies in front
+                    const dx = enemy.centerX - this.centerX;
+                    const dy = enemy.centerY - this.centerY;
+                    const dist_sq = dx * dx + dy * dy;
+                    // Check range condition more explicitly
+                    if (dist_sq < (SCREEN_WIDTH * 0.8) ** 2 && dist_sq < min_dist_sq) {
+                        min_dist_sq = dist_sq;
+                        closestEnemy = enemy;
                     }
                 }
             });
-            enemyBullets.forEach((bullet) => {
-                if (!bullet.shouldRemove && !player.shouldRemove && player.collidesWith(bullet)) {
-                    bullet.shouldRemove = true;
-                    effects.push(new Explosion(bullet.centerX, bullet.centerY, 10, bullet.color, 100));
-                    player.takeDamage(bullet.damage);
-                }
-            });
-            enemies.forEach((enemy) => {
-                if (!enemy.shouldRemove && !player.shouldRemove && player.collidesWith(enemy)) {
-                    enemy.shouldRemove = true;
-                    effects.push(new Explosion(enemy.centerX, enemy.centerY, enemy.width * 1.2, enemy.color, 300));
-                    player.takeDamage(2);
-                    score += enemy.scoreValue;
-                }
-            });
-            if (boss && !boss.shouldRemove && !player.shouldRemove && player.collidesWith(boss)) {
-                player.takeDamage(5);
-            }
-            powerups.forEach((powerup) => {
-                if (!powerup.shouldRemove && !player.shouldRemove && player.collidesWith(powerup)) {
-                    powerup.shouldRemove = true;
-                    player.applyPowerup(powerup.type);
-                }
-            });
-            playerBullets = playerBullets.filter(o => !o.shouldRemove);
-            playerMissiles = playerMissiles.filter(o => !o.shouldRemove);
-            enemies = enemies.filter(o => !o.shouldRemove);
-            enemyBullets = enemyBullets.filter(o => !o.shouldRemove);
-            powerups = powerups.filter(o => !o.shouldRemove);
-            effects = effects.filter(o => !o.shouldRemove);
-            if (boss && boss.shouldRemove) {
-                boss = null;
-            }
-            if (player.shouldRemove && !isGameOver) {
-                gameOver();
+
+            if (closestEnemy) {
+                this.lockTarget = closestEnemy;
+                this.lockOnStartTime = now;
+                this.lockOnStage = 1; // Start locking
             }
         }
 
-        window.addEventListener('keydown', (e) => {
-            if (isGameOver && e.key !== 'Enter') return;
-            keysPressed[e.key] = true;
-            if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'm'].includes(e.key)) {
-                e.preventDefault();
+        // Progress lock-on and fire missile
+        if (this.lockTarget && this.lockOnStage === 1) {
+            if (now - this.lockOnStartTime > this.missileLockTime) {
+                this.lockOnStage = 2; // Locked (momentary state before firing)
+                const missile = new Missile(this.centerX, this.centerY, this.lockTarget, this.currentMissileSpeed);
+                gameObjects.missiles.player.push(missile);
+                this._reset_lock(); // Reset immediately after firing
             }
+        }
+    }
+
+    _reset_lock() {
+        this.lockTarget = null;
+        this.lockOnStage = 0;
+        this.lockOnStartTime = 0;
+    }
+
+    draw(ctx) {
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle"; // Align text vertically to the y coordinate
+
+        const drawY = this.centerY; // Use centerY for vertical alignment
+
+        // Draw the parts relative to the top-left 'x'
+        ctx.fillText(this.textWingL, this.x + this.wingLOffset, drawY);
+        ctx.fillText(this.textBody, this.x + this.bodyOffset, drawY);
+        ctx.fillText(this.textWingR, this.x + this.wingROffset, drawY);
+
+        // Optional: Draw bounding box for debugging
+        // ctx.strokeStyle = 'red';
+        // ctx.lineWidth = 1;
+        // ctx.strokeRect(this.x, this.y, this.width, this.height);
+    }
+
+
+    draw_lock_on(ctx) {
+        if (this.lockTarget && !this.lockTarget.shouldRemove) {
+            const targetPos = [this.lockTarget.centerX, this.lockTarget.centerY];
+            const radius = Math.max(this.lockTarget.width, this.lockTarget.height) / 2 + 10;
+            const progress = Math.min(1, (performance.now() - this.lockOnStartTime) / this.missileLockTime);
+
+            ctx.lineWidth = 2;
+            if (this.lockOnStage === 1) {
+                // Draw locking progress arc
+                ctx.strokeStyle = YELLOW;
+                ctx.beginPath();
+                ctx.arc(targetPos[0], targetPos[1], radius, -Math.PI / 2, -Math.PI / 2 + progress * 2 * Math.PI);
+                ctx.stroke();
+            } else if (this.lockOnStage === 2) { // Should be brief, maybe just flash?
+                 ctx.strokeStyle = RED;
+                 ctx.lineWidth = 3;
+                 ctx.beginPath();
+                 ctx.arc(targetPos[0], targetPos[1], radius, 0, 2 * Math.PI);
+                 ctx.stroke();
+                 // Crosshairs
+                 ctx.beginPath();
+                 ctx.moveTo(targetPos[0] - radius, targetPos[1]);
+                 ctx.lineTo(targetPos[0] + radius, targetPos[1]);
+                 ctx.moveTo(targetPos[0], targetPos[1] - radius);
+                 ctx.lineTo(targetPos[0], targetPos[1] + radius);
+                 ctx.stroke();
+            }
+            ctx.lineWidth = 1; // Reset line width
+        }
+    }
+
+    applyPowerup(type) {
+        console.log(`Player got powerup: ${type}`);
+        if (type === 'M') {
+            if (this.missileLevel < 2) {
+                this.missileLevel += 1;
+                this.missileLockTime = LOCK_ON_TIME * (0.75 ** this.missileLevel);
+                this.currentMissileSpeed = MISSILE_SPEED * (1.2 ** this.missileLevel);
+                console.log(`Missile level: ${this.missileLevel}, Lock Time: ${this.missileLockTime.toFixed(0)}ms, Speed: ${(this.currentMissileSpeed / FPS).toFixed(1)}`);
+            }
+        } else if (type === 'S') {
+            if (this.shootLevel < 2) {
+                this.shootLevel += 1;
+                this.shootDelay = PLAYER_SHOOT_DELAY_BASE * (0.7 ** this.shootLevel);
+                console.log(`Shoot level: ${this.shootLevel}, Delay: ${this.shootDelay.toFixed(0)}ms`);
+            }
+        } else if (type === 'D') {
+            if (this.drones.length < 2) {
+                let drone;
+                if (this.drones.length === 0) {
+                    drone = new Drone(this, -30, -40); // Offset Y negative is above
+                } else {
+                    // Position second drone below
+                    drone = new Drone(this, -30, 40); // Offset Y positive is below
+                }
+                this.drones.push(drone);
+                gameObjects.drones.push(drone); // Add to global drone array
+                console.log(`Drone Acquired (Total: ${this.drones.length})`);
+            }
+        } else if (type === 'H') {
+            this.h_rain_active = true;
+            this.h_rain_end_time = performance.now() + 5000; // 5 seconds
+            console.log("H Rain Activated");
+        } else if (type === 'L') {
+            if (this.l_stage < 3) {
+                this.l_stage += 1;
+                console.log(`L Stage upgraded: ${this.l_stage}`);
+            }
+             // Refill HP when getting L
+             this.hp = this.maxHp;
+             console.log("HP Restored by L Powerup");
+
+        } else if (type === 'B') {
+            this.b_collected += 1;
+            console.log(`B collected: ${this.b_collected}/3`);
+            if (this.b_collected >= 3) {
+                this.activate_phoenix();
+                this.b_collected = 0;
+            }
+        }
+    }
+
+    activate_phoenix() {
+        console.log("PHOENIX ACTIVATED!");
+        // Add screen flash effect
+        gameObjects.effects.push(new ScreenFlash(ORANGE, 150));
+
+        let killed_count = 0;
+        // Iterate backwards when removing elements
+        for (let i = gameObjects.enemies.length - 1; i >= 0; i--) {
+            const enemy = gameObjects.enemies[i];
+            if (!(enemy instanceof Boss)) { // Don't kill Boss
+                enemy.shouldRemove = true;
+                score += enemy.score_value || 0; // Add score
+                killed_count++;
+                // Add explosion effect for each killed enemy
+                gameObjects.effects.push(new Explosion(enemy.centerX, enemy.centerY, enemy.width * 1.5, enemy.color || ORANGE, 400));
+            }
+        }
+        console.log(`Phoenix cleared ${killed_count} enemies.`);
+
+        // Clear enemy bullets and missiles
+        gameObjects.bullets.enemy = [];
+        gameObjects.missiles.enemy = [];
+        // Consider clearing player missiles too? Optional.
+        // gameObjects.missiles.player = [];
+    }
+
+    takeDamage(amount) {
+        if (this.shouldRemove) return; // Already dead
+        this.hp -= amount;
+        console.log(`Player took ${amount} damage, HP: ${this.hp.toFixed(1)}`);
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.shouldRemove = true; // Mark for removal
+            // Add player explosion effect
+            gameObjects.effects.push(new Explosion(this.centerX, this.centerY, this.width * 2, this.color, 600));
+        } else {
+             // Add subtle hit flash?
+             gameObjects.effects.push(new ScreenFlash(RED, 80, 0.3)); // Short red flash
+        }
+    }
+}
+
+// --- Bullet Classes ---
+class Bullet extends GameObject {
+    constructor(x, y) {
+        super(x, y);
+        this.speedX = BULLET_SPEED;
+        this.damage = BULLET_DAMAGE;
+        this.text = ".";
+        this.fontStyle = `bold ${BULLET_FONT_SIZE}px ${DEFAULT_FONT_FAMILY}`;
+        this.color = WHITE;
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        this.y -= this.height / 2; // Center vertically
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.left > SCREEN_WIDTH) {
+            this.shouldRemove = true;
+        }
+    }
+    draw(ctx) {
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.text, this.x, this.centerY);
+    }
+}
+
+class LBullet extends Bullet {
+    constructor(x, y) {
+        super(x, y);
+        this.text = "---";
+        this.color = LIGHT_BLUE; // Use a distinct color
+        this.damage = BULLET_DAMAGE * 2;
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        this.y = y - this.height / 2; // Recenter
+    }
+    // Inherits update and draw from Bullet
+}
+
+class HRainBullet extends Bullet {
+     constructor(x, y) {
+         // Call super with initial position, speedY will be set
+         super(x, y);
+         this.speedX = 0; // No horizontal speed
+         this.speedY = 6 * FPS; // Downward speed
+         this.text = ".";
+         this.color = YELLOW;
+         this.damage = 0.1;
+         // Dimensions already set by super constructor
+         // Adjust position to be centered horizontally at spawn x
+         this.x = x - this.width / 2;
+         this.y = y; // Start at top
+     }
+     update(dt) {
+        // Update position using speedY
+        this.y += this.speedY * dt;
+        // Check if off bottom screen
+        if (this.top > SCREEN_HEIGHT) {
+            this.shouldRemove = true;
+        }
+    }
+     // Inherits draw from Bullet (but uses own color/text)
+}
+
+class DroneBullet extends Bullet {
+     constructor(x, y) {
+         super(x, y);
+         this.color = GREEN; // Drone bullet color
+         this.damage = BULLET_DAMAGE * 0.8; // Slightly less damage?
+         // Dimensions/speed already set by super
+         this.y = y - this.height / 2; // Recenter
+     }
+     // Inherits update and draw from Bullet
+}
+
+class Missile extends GameObject {
+    constructor(x, y, target, speed) {
+        super(x, y);
+        this.target = target;
+        this.speed = speed;
+        this.damage = MISSILE_DAMAGE;
+        this.text = ">";
+        this.fontStyle = `bold 20px ${DEFAULT_FONT_FAMILY}`;
+        this.color = MAGENTA;
+
+        // Initial velocity estimate (straight right if no target initially?)
+        this.speedX = this.speed;
+        this.speedY = 0;
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        // Center the initial position
+        this.x -= this.width / 2;
+        this.y -= this.height / 2;
+    }
+
+    update(dt) {
+        if (this.target && !this.target.shouldRemove) {
+            const targetX = this.target.centerX;
+            const targetY = this.target.centerY;
+            const currentX = this.centerX;
+            const currentY = this.centerY;
+
+            const dx = targetX - currentX;
+            const dy = targetY - currentY;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < 5) { // Close enough to target
+                this.shouldRemove = true; // Hit! (Collision handled separately)
+                return;
+            }
+
+            // Normalize direction vector and apply speed
+            this.speedX = (dx / dist) * this.speed;
+            this.speedY = (dy / dist) * this.speed;
+
+            super.update(dt); // Apply movement
+
+        } else {
+            // Target lost or dead, continue straight? Or just remove?
+            // Option 1: Continue last direction
+             super.update(dt);
+            // Option 2: Remove immediately
+            // this.shouldRemove = true;
+        }
+
+        // Boundary check (remove if way off screen)
+        if (this.x > SCREEN_WIDTH + 100 || this.x < -100 || this.y > SCREEN_HEIGHT + 100 || this.y < -100) {
+            this.shouldRemove = true;
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        // Translate to center for rotation
+        ctx.translate(this.centerX, this.centerY);
+        // Rotate towards velocity direction
+        const angle = Math.atan2(this.speedY, this.speedX);
+        ctx.rotate(angle);
+
+        // Draw the text centered at the translated origin
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.text, 0, 0);
+
+        ctx.restore(); // Restore context state
+    }
+}
+
+// --- Drone Class ---
+class Drone extends GameObject {
+    constructor(player, offsetX = -30, offsetY = -40) {
+        super(player.centerX + offsetX, player.centerY + offsetY);
+        this.player = player;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.text = "d";
+        this.fontStyle = `20px ${DEFAULT_FONT_FAMILY}`;
+        this.color = CYAN;
+        this.lastShotTime = performance.now();
+        this.shootDelay = 500; // ms
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        // Center initial position
+        this.x -= this.width/2;
+        this.y -= this.height/2;
+    }
+
+    update(dt) {
+        if (this.player.shouldRemove) {
+            this.shouldRemove = true;
+            // No need to remove from player.drones here, filter handles it
+            return;
+        }
+
+        // --- Follow Player ---
+        // Simple follow (could add smoothing/lerping)
+        const targetX = this.player.centerX + this.offsetX - this.width / 2;
+        const targetY = this.player.centerY + this.offsetY - this.height / 2;
+        this.x = targetX;
+        this.y = targetY;
+
+
+        // --- Shooting ---
+        const now = performance.now();
+        if (now - this.lastShotTime > this.shootDelay) {
+            this.lastShotTime = now;
+            // Spawn bullet slightly to the right of the drone's center
+            const bullet = new DroneBullet(this.centerX + this.width / 2, this.centerY);
+            gameObjects.bullets.player.push(bullet);
+        }
+    }
+
+    draw(ctx) {
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.text, this.centerX, this.centerY);
+    }
+
+     // Override collidesWith for text sprite accuracy
+     collidesWith(other) {
+         return this.collidesWithTextSprite(other);
+     }
+}
+
+
+// --- Enemy Classes ---
+class Enemy extends GameObject {
+    constructor(x, y, text, fontStyle, color) {
+        super(x, y);
+        this.hp = 1;
+        this.speedX = 1 * FPS; // Base speed, negated later
+        this.score_value = 0;
+        this.lastShot = performance.now();
+        this.shootDelay = 2000; // ms
+        this.text = text;
+        this.fontStyle = fontStyle;
+        this.color = color;
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        this.y = y - this.height / 2; // Center vertically based on spawn Y
+    }
+
+    update(dt) {
+        this.x -= this.speedX * dt; // Move left
+        if (this.right < 0) {
+            this.shouldRemove = true;
+        }
+    }
+
+    shoot() {
+        // Default shoot implementation (can be overridden)
+        console.warn("Shoot method not implemented for this enemy type!");
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.shouldRemove = true;
+            return true; // Indicates killed
+        }
+        return false; // Indicates not killed
+    }
+
+    draw(ctx) {
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.text, this.centerX, this.centerY);
+         // Optional: Draw HP Bar below enemy
+         // if (this.maxHp && this.hp < this.maxHp) { ... draw bar ... }
+    }
+     // Override collidesWith for text sprite accuracy
+     collidesWith(other) {
+         return this.collidesWithTextSprite(other);
+     }
+}
+
+class EnemySmall extends Enemy {
+    constructor() {
+        const spawnY = getRandomInt(30, SCREEN_HEIGHT - 30);
+        const fontStyle = `25px ${DEFAULT_FONT_FAMILY}`;
+        super(SCREEN_WIDTH + getRandomInt(50, 200), spawnY, "E", fontStyle, RED);
+
+        this.hp = ENEMY_SMALL_HP;
+        this.maxHp = ENEMY_SMALL_HP; // For potential HP bar
+        this.speedX = (ENEMY_SMALL_SPEED_X / FPS + getRandomFloat(-0.5, 0.5)) * FPS; // Adjust base speed
+        this.score_value = ENEMY_SMALL_SCORE;
+        this.shootDelay = ENEMY_SMALL_SHOOT_DELAY + getRandomInt(-200, 200);
+    }
+
+    update(dt) {
+        super.update(dt); // Apply movement and boundary check
+        const now = performance.now();
+        // Only shoot when fully on screen
+        if (this.right < SCREEN_WIDTH && now - this.lastShot > this.shootDelay) {
+            this.shoot();
+            this.lastShot = now;
+        }
+    }
+
+    shoot() {
+        const bullet = new EnemyBullet(this.left, this.centerY); // Spawn from left edge
+        gameObjects.bullets.enemy.push(bullet);
+    }
+}
+
+class EnemyMedium extends Enemy {
+    constructor(targetPlayer) {
+         const spawnY = getRandomInt(50, SCREEN_HEIGHT - 50);
+         const fontStyle = `35px ${DEFAULT_FONT_FAMILY}`;
+         super(SCREEN_WIDTH + getRandomInt(100, 300), spawnY, "M", fontStyle, YELLOW);
+
+        this.targetPlayer = targetPlayer; // Reference to player for missiles
+        this.hp = ENEMY_MEDIUM_HP;
+        this.maxHp = ENEMY_MEDIUM_HP;
+        this.speedX = (ENEMY_MEDIUM_SPEED_X / FPS + getRandomFloat(-0.3, 0.3)) * FPS;
+        this.score_value = ENEMY_MEDIUM_SCORE;
+        this.shootDelay = ENEMY_MEDIUM_SHOOT_DELAY + getRandomInt(-150, 150);
+        this.lastMissileShot = performance.now();
+        this.missileDelay = ENEMY_MEDIUM_MISSILE_DELAY + getRandomInt(-500, 500);
+    }
+
+    update(dt) {
+        super.update(dt);
+        const now = performance.now();
+        if (this.right < SCREEN_WIDTH) { // Only shoot when on screen
+            if (now - this.lastShot > this.shootDelay) {
+                this.shoot();
+                this.lastShot = now;
+            }
+            if (now - this.lastMissileShot > this.missileDelay) {
+                this.shoot_missile();
+                this.lastMissileShot = now;
+            }
+        }
+    }
+
+    shoot() {
+        const bullet = new EnemyBullet(this.left, this.centerY);
+        gameObjects.bullets.enemy.push(bullet);
+    }
+
+    shoot_missile() {
+        // Check if player exists and is alive
+        if (this.targetPlayer && !this.targetPlayer.shouldRemove) {
+            const missile = new EnemyMissile(this.centerX, this.centerY, this.targetPlayer);
+            gameObjects.missiles.enemy.push(missile);
+        }
+    }
+}
+
+class EnemyBullet extends GameObject {
+    constructor(x, y) {
+        super(x, y); // x is the right edge for spawn
+        this.speedX = -ENEMY_BULLET_SPEED; // Move left
+        this.damage = ENEMY_SMALL_BULLET_DAMAGE; // Use constant
+        this.text = ".";
+        this.fontStyle = `bold ${BULLET_FONT_SIZE}px ${DEFAULT_FONT_FAMILY}`;
+        this.color = RED;
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        // Adjust position based on text dimensions (spawn right edge at x)
+        this.x = x - this.width;
+        this.y = y - this.height / 2; // Center vertically
+    }
+
+    update(dt) {
+        super.update(dt);
+        if (this.right < 0) {
+            this.shouldRemove = true;
+        }
+    }
+    draw(ctx) {
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "left"; // Draw from top-left
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.text, this.x, this.centerY);
+    }
+     // Override collidesWith for text sprite accuracy
+     collidesWith(other) {
+         return this.collidesWithTextSprite(other);
+     }
+}
+
+class EnemyMissile extends GameObject {
+    constructor(x, y, target) {
+        super(x, y); // Spawn at center x, y
+        this.target = target;
+        this.speed = ENEMY_MISSILE_SPEED;
+        this.damage = ENEMY_MEDIUM_MISSILE_DAMAGE;
+        this.tracking = true;
+        this.text = "<";
+        this.fontStyle = `bold 20px ${DEFAULT_FONT_FAMILY}`;
+        this.color = ORANGE;
+
+        this.velX = -this.speed; // Initial velocity if no target
+        this.velY = 0;
+
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        // Center initial position
+        this.x -= this.width / 2;
+        this.y -= this.height / 2;
+    }
+
+    update(dt) {
+        if (this.tracking && this.target && !this.target.shouldRemove) {
+            // Stop tracking if target is far left
+            if (this.target.right < SCREEN_WIDTH / 3) {
+                this.tracking = false;
+                this.velX = -this.speed * 1.5; // Speed up and go straight left
+                this.velY = 0;
+            } else {
+                // Homing logic
+                const targetPos = [this.target.centerX, this.target.centerY];
+                const currentPos = [this.centerX, this.centerY];
+                const dx = targetPos[0] - currentPos[0];
+                const dy = targetPos[1] - currentPos[1];
+                const dist = Math.hypot(dx, dy);
+                if (dist < 5) {
+                    this.shouldRemove = true; // Close enough
+                    return;
+                }
+                this.velX = (dx / dist) * this.speed;
+                this.velY = (dy / dist) * this.speed;
+            }
+        } else if (!this.target || this.target.shouldRemove) {
+             // Target lost while tracking, stop tracking
+             this.tracking = false;
+              // Keep last velocity or go straight left? Let's go straight left.
+             this.velX = -this.speed;
+             this.velY = 0;
+        }
+        // Apply calculated velocity
+        this.x += this.velX * dt;
+        this.y += this.velY * dt;
+
+        // Boundary check
+        if (this.x < -100 || this.x > SCREEN_WIDTH + 100 || this.y < -100 || this.y > SCREEN_HEIGHT + 100) {
+            this.shouldRemove = true;
+        }
+    }
+
+     draw(ctx) {
+         ctx.save();
+         ctx.translate(this.centerX, this.centerY);
+         const angle = Math.atan2(this.velY, this.velX); // Point in direction of velocity
+         ctx.rotate(angle);
+
+         ctx.font = this.fontStyle;
+         ctx.fillStyle = this.color;
+         ctx.textAlign = "center";
+         ctx.textBaseline = "middle";
+         ctx.fillText(this.text, 0, 0); // Draw centered at translated origin
+
+         ctx.restore();
+     }
+      // Override collidesWith for text sprite accuracy
+      collidesWith(other) {
+          return this.collidesWithTextSprite(other);
+      }
+}
+
+class Boss extends Enemy {
+    constructor() {
+        const fontStyle = `bold 60px ${DEFAULT_FONT_FAMILY}`;
+        // Initial spawn position (right side, center Y)
+        super(SCREEN_WIDTH - 50, SCREEN_HEIGHT / 2, "BOSS", fontStyle, MAGENTA);
+
+        this.hp = BOSS_HP;
+        this.maxHp = BOSS_HP;
+        this.speedX = 0; // No horizontal movement initially
+        this.speedY = BOSS_SPEED_Y;
+        this.score_value = BOSS_SCORE;
+        this.directionY = 1; // Start moving down
+        this.lastLaserShot = performance.now();
+        this.laserDelay = BOSS_LASER_DELAY;
+        this.lastEvade = performance.now();
+        this.evadeDelay = BOSS_EVADE_DELAY;
+        this.isEvading = false;
+        this.evadeStartTime = 0;
+        this.evadeDuration = BOSS_EVADE_DURATION;
+        this.targetEvadeY = this.y; // Target Y for evasion move
+        this.evadeSpeed = 0;       // Calculated speed for evasion move
+        this.lastWhirlwind = performance.now();
+        this.whirlwindDelay = BOSS_WHIRLWIND_DELAY;
+        this.desperationMode = false;
+        this.lastAbsorb = performance.now();
+        this.absorbCooldown = BOSS_ABSORB_COOLDOWN;
+
+        // Adjust initial position based on text dimensions
+        this.x = SCREEN_WIDTH - 50 - this.width; // Position left edge correctly
+        this.y = SCREEN_HEIGHT / 2 - this.height / 2; // Center vertically
+
+    }
+
+    update(dt) {
+        const now = performance.now();
+
+        // Check for Desperation Mode
+        if (!this.desperation_mode && this.hp <= this.maxHp * BOSS_WHIRLWIND_THRESHOLD) {
+            console.log("BOSS: Desperation Mode Activated!");
+            this.desperation_mode = true;
+            this.color = RED; // Change color in desperation
+        }
+
+        // Evasion Logic
+        if (!this.isEvading && now - this.lastEvade > this.evadeDelay) {
+            this._startEvade();
+            this.lastEvade = now; // Reset timer only when starting evade
+        }
+
+        if (this.isEvading) {
+            this._doEvade(dt, now);
+        } else {
+             // Normal Vertical Movement
+             this.y += this.speedY * this.directionY * dt;
+             if (this.top < 20) {
+                 this.y = 20; // Use top property
+                 this.directionY = 1;
+             } else if (this.bottom > SCREEN_HEIGHT - 20) {
+                 this.y = SCREEN_HEIGHT - 20 - this.height; // Use bottom property
+                 this.directionY = -1;
+             }
+        }
+
+
+        // Attack Logic
+        if (!this.isEvading) { // Don't attack while evading
+             if (this.desperation_mode) {
+                 if (now - this.lastWhirlwind > this.whirlwindDelay) {
+                     this.shoot_whirlwind();
+                     this.lastWhirlwind = now;
+                 }
+             } else {
+                 if (now - this.lastLaserShot > this.laserDelay) {
+                     this.shoot_laser();
+                     this.lastLaserShot = now;
+                 }
+             }
+        }
+
+
+        // Absorb Logic (check even if evading?)
+        if (now - this.lastAbsorb > this.absorbCooldown) {
+             let absorbed = false;
+             gameObjects.enemies.forEach(enemy => {
+                // Don't absorb self, only small/medium, and only if not already absorbed this cycle
+                 if (!absorbed && enemy !== this && (enemy instanceof EnemySmall || enemy instanceof EnemyMedium)) {
+                     const dist = distance(this.centerX, this.centerY, enemy.centerX, enemy.centerY);
+                     if (dist < BOSS_ABSORB_RANGE) {
+                         this.absorb_enemy(enemy);
+                         absorbed = true; // Absorb only one per cycle
+                         this.lastAbsorb = now; // Reset absorb timer after successful absorb
+                     }
+                 }
+             });
+        }
+    }
+
+    absorb_enemy(enemy) {
+        // Add visual effect for absorption arm
+        gameObjects.effects.push(new BossArm([this.centerX, this.centerY], [enemy.centerX, enemy.centerY]));
+        enemy.shouldRemove = true; // Mark enemy for removal
+        this.hp = Math.min(this.maxHp, this.hp + 10); // Heal boss, capped at max HP
+        console.log(`Boss absorbed an ally! HP: ${this.hp.toFixed(1)}`);
+        // Add absorb sound effect here later
+    }
+
+    _startEvade() {
+         console.log("Boss Evading!");
+         this.isEvading = true;
+         this.evadeStartTime = performance.now();
+
+         // Choose a target Y position significantly different from current
+         const currentY = this.centerY;
+         const minYDist = SCREEN_HEIGHT * 0.3;
+         let targetY = currentY;
+         while (Math.abs(targetY - currentY) < minYDist) {
+              targetY = getRandomInt(this.height / 2 + 20, SCREEN_HEIGHT - this.height / 2 - 20); // Target center Y within bounds
+         }
+         this.targetEvadeY = targetY;
+
+         // Calculate speed needed to reach target in time
+         const distanceToTravel = Math.abs(this.targetEvadeY - this.centerY);
+         const durationSecs = this.evadeDuration / 1000.0;
+         this.evadeSpeed = (durationSecs > 0) ? (distanceToTravel / durationSecs) : 500; // pixels/sec
+         console.log(`Evading to Y=${targetY.toFixed(0)} at speed ${this.evadeSpeed.toFixed(0)}`);
+
+          // Add visual cue for evading (e.g., spinning text) - simplified for now
+          this.originalColor = this.color;
+          this.color = WHITE; // Flash white?
+    }
+
+    _doEvade(dt, now) {
+        if (now - this.evadeStartTime > this.evadeDuration) {
+            this.isEvading = false;
+             this.y = this.targetEvadeY - this.height/2; // Snap to final position (top-left y)
+             this.color = this.originalColor || (this.desperation_mode ? RED : MAGENTA); // Restore color
+            console.log("Evasion finished.");
+            return;
+        }
+
+        const moveStep = this.evadeSpeed * dt;
+        if (this.centerY < this.targetEvadeY) {
+             this.y += Math.min(moveStep, this.targetEvadeY - this.centerY); // Move towards target Y
+        } else if (this.centerY > this.targetEvadeY) {
+             this.y -= Math.min(moveStep, this.centerY - this.targetEvadeY);
+        }
+
+         // Optional: Add visual spinning effect during evade
+    }
+
+
+    shoot_laser() {
+        console.log("Boss: Laser");
+        const laserYOffsets = [-25, 0, 25];
+        laserYOffsets.forEach(offset => {
+            const bullet = new EnemyBullet(this.left, this.centerY + offset); // Spawn from left edge
+            bullet.speedX = -ENEMY_BULLET_SPEED * 1.5 / FPS * FPS; // Increase speed
+            bullet.damage = 1.5;
+            bullet.color = BLUE; // Laser color
+             bullet.text = "="; // Laser visual
+             bullet.setDimensionsFromText(ctx, bullet.text, bullet.fontStyle);
+             bullet.x = this.left - bullet.width; // Adjust spawn position
+             bullet.y = this.centerY + offset - bullet.height/2;
+
+            gameObjects.bullets.enemy.push(bullet);
         });
+    }
 
-        window.addEventListener('keyup', (e) => {
-            keysPressed[e.key] = false;
-        });
+    shoot_whirlwind() {
+        console.log("Boss: Whirlwind");
+        const numBullets = 24;
+        const angleStep = (Math.PI * 2) / numBullets; // Radians
+        const safeZoneAngleCenter = getRandomFloat(0, Math.PI * 2); // Radians
+        const safeZoneWidthRad = (40 * Math.PI) / 180; // Convert 40 degrees to radians
 
-        function setupMobileControls() {
-            const btnUp = document.getElementById('btnUp');
-            const btnDown = document.getElementById('btnDown');
-            const btnLeft = document.getElementById('btnLeft');
-            const btnRight = document.getElementById('btnRight');
-            const btnFire = document.getElementById('btnFire');
-            const btnMissile = document.getElementById('btnMissile');
+        for (let i = 0; i < numBullets; i++) {
+            const angleRad = (i * angleStep + getRandomFloat(-angleStep / 4, angleStep / 4)) % (Math.PI * 2);
 
-            const keyMap = {
-                'btnUp': 'ArrowUp',
-                'btnDown': 'ArrowDown',
-                'btnLeft': 'ArrowLeft',
-                'btnRight': 'ArrowRight',
-                'btnFire': ' ',
-                'btnMissile': 'm'
-            };
+            // Check if angle is within the safe zone
+            let angleDiff = Math.abs(angleRad - safeZoneAngleCenter);
+            // Handle wrap-around distance (e.g., diff between 350deg and 10deg)
+            angleDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
 
-            const buttons = [btnUp, btnDown, btnLeft, btnRight, btnFire, btnMissile];
-
-            buttons.forEach(button => {
-                if (!button) return;
-                const key = keyMap[button.id];
-                if (!key) return;
-
-                button.addEventListener('touchstart', (e) => {
-                    if (isGameOver) return;
-                    e.preventDefault();
-                    keysPressed[key] = true;
-                    button.style.backgroundColor = 'rgba(200, 200, 200, 0.8)';
-                }, { passive: false });
-
-                const touchEndHandler = (e) => {
-                    keysPressed[key] = false;
-                    button.style.backgroundColor = '';
-                };
-
-                button.addEventListener('touchend', touchEndHandler);
-                button.addEventListener('touchcancel', touchEndHandler);
-
-                button.addEventListener('touchmove', (e) => {
-                    if (isGameOver || !keysPressed[key]) return;
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const rect = button.getBoundingClientRect();
-                    if (touch.clientX < rect.left || touch.clientX > rect.right ||
-                        touch.clientY < rect.top || touch.clientY > rect.bottom) {
-                        keysPressed[key] = false;
-                        button.style.backgroundColor = '';
-                    }
-                }, { passive: false });
-            });
-
-            document.addEventListener('touchend', (e) => {
-                Object.values(keyMap).forEach(key => keysPressed[key] = false);
-                buttons.forEach(button => { if (button) button.style.backgroundColor = ''; });
-            });
-        }
-
-        function drawHUD() {
-            ctx.save();
-            ctx.fillStyle = WHITE;
-            ctx.font = "18px Arial";
-            ctx.textAlign = "left";
-            ctx.textBaseline = "top";
-            const hpBarWidth = 150;
-            const hpBarHeight = 15;
-            const hpRatio = Math.max(0, player.hp / player.maxHp);
-            ctx.fillStyle = RED;
-            ctx.fillRect(10, 10, hpBarWidth, hpBarHeight);
-            ctx.fillStyle = GREEN;
-            ctx.fillRect(10, 10, hpBarWidth * hpRatio, hpBarHeight);
-            ctx.strokeStyle = WHITE;
-            ctx.strokeRect(10, 10, hpBarWidth, hpBarHeight);
-            ctx.fillStyle = WHITE;
-            ctx.fillText(`HP: ${Math.ceil(player.hp)}/${player.maxHp}`, 10 + hpBarWidth + 10, 8);
-            ctx.fillStyle = WHITE;
-            ctx.fillText(`Time: ${Math.ceil(timeRemaining)}`, 10, 35);
-            ctx.fillStyle = YELLOW;
-            ctx.fillText(`Score: ${score}`, 10, 60);
-            ctx.fillStyle = ORANGE;
-            ctx.fillText(`Phoenix: ${player.b_collected}/3`, 10, 85);
-            if (player.canShootMissile) {
-                ctx.fillStyle = PINK;
-                ctx.fillText("Missiles Ready (M)", 10, 110);
+            if (angleDiff < safeZoneWidthRad / 2) {
+                continue; // Skip bullet in safe zone
             }
-            if (player.on_cooldown) {
-                ctx.fillStyle = RED;
-                ctx.textAlign = "center";
-                ctx.fillText(`Phoenix Cooldown: ${Math.ceil(player.cooldownTimer / 1000)}s`, SCREEN_WIDTH / 2, 10);
-            } else if (player.shieldActive) {
-                ctx.fillStyle = LIGHT_BLUE;
-                ctx.textAlign = "center";
-                ctx.fillText(`Shield: ${Math.ceil(player.shieldTimer / 1000)}s`, SCREEN_WIDTH / 2, 10);
-            }
-            ctx.restore();
-        }
 
-        function drawGameOver() {
-            ctx.save();
-            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-            ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            ctx.fillStyle = RED;
-            ctx.font = "50px Arial";
+            const speedMod = getRandomFloat(0.7, 1.1);
+            const bullet = new EnemyWhirlwindBullet(this.centerX, this.centerY, angleRad, speedMod);
+            gameObjects.bullets.enemy.push(bullet);
+        }
+    }
+
+     takeDamage(amount) {
+         const killed = super.takeDamage(amount);
+         if (killed) {
+             console.log("BOSS DEFEATED!");
+             // Trigger boss defeated state in main game logic
+         }
+         return killed;
+     }
+
+      draw(ctx) {
+          super.draw(ctx); // Draw the "BOSS" text
+
+          // Draw Boss HP Bar at bottom (like original)
+          if (!this.shouldRemove) { // Only draw if alive
+              draw_health_bar(ctx, SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT - 25,
+                              this.hp, this.maxHp, 300, 15, RED);
+               draw_text(ctx, "BOSS HP", 20, SCREEN_WIDTH / 2, SCREEN_HEIGHT - 45, MAGENTA); // Label above bar
+          }
+      }
+}
+
+class EnemyWhirlwindBullet extends GameObject {
+     constructor(x, y, angleRad, speedModifier = 1.0) {
+         super(x, y); // Center spawn
+         this.speed = (ENEMY_BULLET_SPEED * 0.9) * speedModifier; // Pixels per sec
+         this.velX = Math.cos(angleRad) * this.speed;
+         this.velY = Math.sin(angleRad) * this.speed;
+         this.spawnTime = performance.now();
+         this.lifetime = 5000; // ms
+         this.damage = 0.8;
+         this.text = ".";
+         this.fontStyle = `bold ${BULLET_FONT_SIZE}px ${DEFAULT_FONT_FAMILY}`;
+         this.color = ORANGE;
+         this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+         this.x -= this.width/2; // Adjust to top-left
+         this.y -= this.height/2;
+     }
+
+     update(dt) {
+         this.x += this.velX * dt;
+         this.y += this.velY * dt;
+
+         if (performance.now() - this.spawnTime > this.lifetime) {
+             this.shouldRemove = true;
+         }
+         // Wider boundary check for whirlwind bullets
+         if (this.x < -200 || this.x > SCREEN_WIDTH + 200 || this.y < -200 || this.y > SCREEN_HEIGHT + 200) {
+            this.shouldRemove = true;
+         }
+     }
+     draw(ctx) {
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.text, this.centerX, this.centerY);
+    }
+      // Override collidesWith for text sprite accuracy
+      collidesWith(other) {
+          return this.collidesWithTextSprite(other);
+      }
+}
+
+
+// --- Boss Arm Effect ---
+class BossArm extends GameObject {
+    constructor(startPos, endPos, duration = 800) {
+        super(startPos[0], startPos[1]); // Use start pos as initial anchor
+        this.startPos = startPos;
+        this.endPos = endPos;
+        this.startTime = performance.now();
+        this.duration = duration;
+        this.isEffect = true; // Mark as effect
+
+        const dx = endPos[0] - startPos[0];
+        const dy = endPos[1] - startPos[1];
+        this.distance = Math.hypot(dx, dy);
+        this.angleRad = Math.atan2(dy, dx); // Angle in radians
+
+        // Prepare text sprite
+        this.armChar = '-';
+        this.charSpacing = 8; // Estimated pixels per char + spacing
+        this.count = Math.max(1, Math.floor(this.distance / this.charSpacing));
+        this.armStr = this.armChar.repeat(this.count);
+        this.fontStyle = `bold 20px ${DEFAULT_FONT_FAMILY}`;
+        this.color = WHITE;
+        this.setDimensionsFromText(ctx, this.armStr, this.fontStyle); // Set width mainly
+        // Height is less critical here
+    }
+
+    update(dt) {
+        if (performance.now() - this.startTime > this.duration) {
+            this.shouldRemove = true;
+        }
+    }
+
+    draw(ctx) {
+         const lifeRatio = Math.min(1, (performance.now() - this.startTime) / this.duration);
+         const currentLength = this.distance * lifeRatio; // Arm grows or retracts
+         const currentCount = Math.max(1, Math.floor(currentLength / this.charSpacing));
+         const currentStr = this.armChar.repeat(currentCount);
+
+
+        ctx.save();
+        ctx.translate(this.startPos[0], this.startPos[1]); // Move origin to start pos
+        ctx.rotate(this.angleRad); // Rotate context
+
+        // Draw the text along the rotated x-axis
+        ctx.font = this.fontStyle;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "left"; // Draw from the start point
+        ctx.textBaseline = "middle";
+        ctx.fillText(currentStr, 0, 0); // Draw at (0,0) relative to translated/rotated origin
+
+        ctx.restore();
+    }
+}
+
+
+// --- Powerup Class ---
+class PowerUp extends GameObject {
+     constructor(centerPos) {
+        super(centerPos[0], centerPos[1]); // Spawn at center
+        this.type = POWERUP_TYPES[getRandomInt(0, POWERUP_TYPES.length - 1)];
+        this.fontStyle = `bold ${POWERUP_SIZE}px ${DEFAULT_FONT_FAMILY}`;
+
+        let color = WHITE;
+        if (this.type === 'M') color = BLUE;
+        else if (this.type === 'S') color = GREEN;
+        else if (this.type === 'D') color = CYAN;
+        else if (this.type === 'H') color = YELLOW;
+        else if (this.type === 'L') color = WHITE; // L is white in original
+        else if (this.type === 'B') color = ORANGE;
+        this.color = color;
+
+        this.text = this.type;
+        this.setDimensionsFromText(ctx, this.text, this.fontStyle);
+        // Adjust to top-left based on center spawn
+        this.x -= this.width/2;
+        this.y -= this.height/2;
+
+        this.spawnTime = performance.now();
+        this.speedY = POWERUP_SPEED_Y; // Downward drift
+     }
+
+      update(dt) {
+          this.y += this.speedY * dt;
+          if (performance.now() - this.spawnTime > POWERUP_DURATION || this.top > SCREEN_HEIGHT) {
+              this.shouldRemove = true;
+          }
+      }
+
+       draw(ctx) {
+            ctx.font = this.fontStyle;
+            ctx.fillStyle = this.color;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("GAME OVER", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60);
-            ctx.fillStyle = WHITE;
-            ctx.font = "30px Arial";
-            ctx.fillText(`Final Score: ${score}`, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-            ctx.font = "20px Arial";
-            ctx.fillText("Press Enter or Tap to Restart", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 50);
-            ctx.restore();
+            ctx.fillText(this.text, this.centerX, this.centerY);
+       }
+        // Override collidesWith for text sprite accuracy
+        collidesWith(other) {
+            return this.collidesWithTextSprite(other);
         }
+}
 
-        let elapsedTime = 0;
-
-        function gameLoop(currentTime) {
-            animationFrameId = requestAnimationFrame(gameLoop);
-            if (!lastTime) lastTime = currentTime;
-            const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
-            lastTime = currentTime;
-
-            if (isGameOver) {
-                ctx.fillStyle = BLACK;
-                ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-                drawGameOver();
-                if (keysPressed['Enter']) {
-                    restartGame();
-                }
-                return;
-            }
-
-            elapsedTime = (currentTime - gameStartTime) / 1000;
-            timeRemaining = Math.max(0, GAME_DURATION - elapsedTime);
-
-            updateSpawners(dt, elapsedTime);
-
-            if (!player.shouldRemove) player.update(dt);
-            if (wingman) wingman.update(dt);
-            [playerBullets, playerMissiles, enemies, enemyBullets, powerups, effects].forEach(arr => {
-                arr.forEach(obj => obj.update(dt));
-            });
-            if (boss) boss.update(dt);
-
-            handleCollisions();
-
-            ctx.fillStyle = BLACK;
-            ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            [enemies, powerups, playerBullets, playerMissiles, enemyBullets].forEach(arr => {
-                arr.forEach(obj => obj.draw());
-            });
-            if (wingman) wingman.draw();
-            if (boss) boss.draw();
-            if (!player.shouldRemove) player.draw();
-            effects.forEach(effect => effect.draw());
-            drawHUD();
-
-            if (timeRemaining <= 0 && !isGameOver) {
-                console.log("Time's Up!");
-                gameOver();
-            }
+// --- Screen Flash Effect ---
+class ScreenFlash extends GameObject {
+     constructor(color, duration, maxAlpha = 0.7) {
+         super(0,0, SCREEN_WIDTH, SCREEN_HEIGHT); // Covers whole screen
+         this.color = color;
+         this.duration = duration;
+         this.life = duration;
+         this.maxAlpha = maxAlpha;
+         this.isEffect = true;
+     }
+      update(dt) {
+        this.life -= dt * 1000;
+        if (this.life <= 0) {
+            this.shouldRemove = true;
         }
+    }
+     draw(ctx) {
+        const alpha = (this.life / this.duration) * this.maxAlpha; // Fade out
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.globalAlpha = 1.0; // Reset alpha
+    }
+}
 
-        let restartListener = null;
 
-        function gameOver() {
-            if (isGameOver) return;
-            isGameOver = true;
-            console.log("Game Over!");
-            keysPressed = {};
-            if (restartListener) canvas.removeEventListener('click', restartListener);
-            restartListener = () => {
-                if (isGameOver) {
-                    restartGame();
-                    canvas.removeEventListener('click', restartListener);
-                    restartListener = null;
-                }
-            };
-            canvas.addEventListener('click', restartListener, { once: true });
-        }
+// --- Game State ---
+let score = 0;
+let gameStartTime = 0;
+let timeRemaining = GAME_DURATION;
+let isGameOver = true; // Start at game over screen
+let playerWon = false;
+let animationFrameId;
+let lastTime = 0;
+let keysPressed = {};
+let player = null; // Hold the player object
+let boss = null; // Hold the boss object
+let bossSpawned = false;
+let bossDefeated = false;
 
-        function restartGame() {
-            console.log("Restarting game...");
-            isGameOver = false;
-            score = 0;
-            gameStartTime = performance.now();
-            timeRemaining = GAME_DURATION;
-            keysPressed = {};
-            lastTime = performance.now();
-            elapsedTime = 0;
-            playerBullets = [];
-            playerMissiles = [];
-            enemies = [];
-            enemyBullets = [];
-            enemyMissiles = [];
-            powerups = [];
-            effects = [];
-            player = new Player();
-            wingman = null;
-            boss = null;
-            bossSpawned = false;
-            lastEnemySpawnTime = 0;
-            enemySpawnInterval = 1500;
-            lastPowerupSpawnTime = 0;
-            const buttons = document.querySelectorAll('.control-button');
-            buttons.forEach(button => {
-                if (button) button.style.backgroundColor = '';
-            });
-            if (restartListener) {
-                canvas.removeEventListener('click', restartListener);
-                restartListener = null;
+// Game Object Arrays (using a structure for clarity)
+let gameObjects = {
+    player: null, // Single player instance
+    drones: [],
+    enemies: [],
+    boss: null, // Single boss instance
+    bullets: {
+        player: [],
+        enemy: [],
+    },
+    missiles: {
+        player: [],
+        enemy: [],
+    },
+    powerups: [],
+    effects: [], // For explosions, boss arms, flashes
+};
+
+// Spawner Timers
+let lastEnemySpawn = 0;
+let enemySpawnDelayMin = 100; // ms
+let enemySpawnDelayMax = 2000; // ms
+let enemySpawnDelay = enemySpawnDelayMax;
+let enemySpawnReductionFactor = 0.90; // Multiplier each spawn
+let bossStageEnemySpawnDelay = 1000; // ms
+let lastPowerupSpawn = 0;
+
+
+// --- Input Handling ---
+window.addEventListener('keydown', (e) => {
+    // Allow restart keys even if game over
+    if (isGameOver && !['y', 'n', 'Y', 'N'].includes(e.key)) return;
+    keysPressed[e.key] = true;
+    // Prevent default browser behavior for game keys
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    keysPressed[e.key] = false;
+});
+
+
+// --- Drawing Functions ---
+function draw_text(ctx, text, size, x, y, color = WHITE, align = "center", baseline = "top") {
+    ctx.font = `bold ${size}px ${DEFAULT_FONT_FAMILY}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+    ctx.fillText(text, x, y);
+}
+
+function draw_health_bar(ctx, x, y, hp, max_hp, width, height, color) {
+    if (hp < 0) hp = 0;
+    const fill_pct = hp / max_hp;
+    const fill_width = Math.max(0, width * fill_pct); // Ensure non-negative width
+    // Draw background/empty part? Optional, or just border.
+    // ctx.fillStyle = '#555';
+    // ctx.fillRect(x, y, width, height);
+
+    // Draw filled part
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, fill_width, height);
+    // Draw border
+    ctx.strokeStyle = WHITE;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
+    ctx.lineWidth = 1; // Reset line width
+}
+
+function drawHUD(ctx) {
+    if (!gameObjects.player || gameObjects.player.shouldRemove) return; // Don't draw if no player
+
+    const player = gameObjects.player;
+    const now = performance.now();
+
+    // Time
+    draw_text(ctx, `Time: ${Math.ceil(timeRemaining)}`, 20, SCREEN_WIDTH / 2, 10, WHITE, "center");
+
+    // Score
+    draw_text(ctx, `Score: ${score}`, 20, SCREEN_WIDTH - 10, 10, YELLOW, "right");
+
+    // Player HP
+    draw_text(ctx, `HP:`, 20, 10, 15, WHITE, "left", "middle");
+    let hpColor = GREEN;
+    if (player.hp <= player.maxHp * 0.3) hpColor = RED;
+    else if (player.hp <= player.maxHp * 0.6) hpColor = YELLOW;
+    draw_health_bar(ctx, 55, 8, player.hp, player.maxHp, 120, 15, hpColor);
+
+    // Player Status (Levels)
+    draw_text(ctx, `M:${player.missileLevel} S:${player.shootLevel} B:${player.b_collected}/3 L:${player.l_stage}`, 16, SCREEN_WIDTH / 2, 35, WHITE, "center");
+
+    // Player Cooldown Indicator
+    if (player.onCooldown) {
+        const cooldown_total = PLAYER_SHOOT_DURATION + PLAYER_SHOOT_COOLDOWN;
+        const cooldown_elapsed = now - player.shootingStartTime;
+        const cooldown_left = Math.max(0, cooldown_total - cooldown_elapsed);
+        draw_text(ctx, `CD:${(cooldown_left / 1000.0).toFixed(1)}s`, 18, player.centerX, player.top - 15, YELLOW, "center", "bottom");
+    }
+     // H-Rain Indicator
+     if (player.h_rain_active) {
+        const h_rain_left = Math.max(0, player.h_rain_end_time - now);
+         draw_text(ctx, `H-Rain: ${(h_rain_left / 1000.0).toFixed(1)}s`, 16, 10, 40, YELLOW, "left");
+     }
+}
+
+
+// --- Game Over Screen ---
+function show_game_over_screen(ctx, win, finalScore) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; // Dark overlay
+    ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    const finalMessage = win ? "You Win!" : "You Lose!";
+    draw_text(ctx, finalMessage, 64, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4, win ? GREEN : RED, "center", "middle");
+    draw_text(ctx, `Final Score: ${finalScore}`, 30, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4 + 80, YELLOW, "center", "middle");
+    draw_text(ctx, "Press Y to Play Again, N to Quit", 22, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.65, WHITE, "center", "middle");
+}
+
+// --- Game Initialization ---
+function initGame() {
+    console.log("Initializing game...");
+    isGameOver = false;
+    playerWon = false;
+    score = 0;
+    gameStartTime = performance.now();
+    lastTime = gameStartTime; // Initialize lastTime
+    timeRemaining = GAME_DURATION;
+    keysPressed = {}; // Clear keys
+
+    // Clear all game object arrays
+    gameObjects = {
+        player: new Player(),
+        drones: [],
+        enemies: [],
+        boss: null,
+        bullets: { player: [], enemy: [] },
+        missiles: { player: [], enemy: [] },
+        powerups: [],
+        effects: [],
+    };
+    player = gameObjects.player; // Keep direct reference
+
+    boss = null; // Ensure boss reference is clear
+    bossSpawned = false;
+    bossDefeated = false;
+
+    // Reset Spawners
+    lastEnemySpawn = gameStartTime;
+    enemySpawnDelay = enemySpawnDelayMax;
+    lastPowerupSpawn = gameStartTime;
+
+     // Start the loop if it's not running
+     if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(gameLoop);
+     }
+
+}
+
+// --- Collision Handling ---
+function handleCollisions() {
+    if (!gameObjects.player || gameObjects.player.shouldRemove) return; // No collisions if player is dead
+    const player = gameObjects.player;
+
+    // 1. Player Bullets vs Enemies
+    gameObjects.bullets.player.forEach(bullet => {
+        if (bullet.shouldRemove) return;
+        gameObjects.enemies.forEach(enemy => {
+            if (!enemy.shouldRemove && bullet.collidesWith(enemy)) {
+                 if (enemy.takeDamage(bullet.damage)) { // takeDamage returns true if killed
+                     score += enemy.score_value;
+                     gameObjects.effects.push(new Explosion(enemy.centerX, enemy.centerY, enemy.width * 1.2, enemy.color || RED, 300));
+                     if (enemy instanceof Boss) {
+                         bossDefeated = true; // Mark boss as defeated
+                         console.log("Boss defeated flag SET");
+                         // Don't remove boss object immediately, let it be filtered
+                     }
+                 }
+                 bullet.shouldRemove = true; // Bullet removed on hit
+                 gameObjects.effects.push(new Explosion(bullet.centerX, bullet.centerY, 15, bullet.color, 100)); // Small hit spark
             }
-        }
-
-        function init() {
-            if (!canvas.getContext) {
-                alert("Your browser does not support the HTML5 Canvas API.");
-                return;
-            }
-            player = new Player();
-            lastTime = performance.now();
-            gameStartTime = performance.now();
-            elapsedTime = 0;
-            setupMobileControls();
-            requestAnimationFrame(gameLoop);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!document.getElementById('gameCanvas')) {
-                console.error("Canvas element not found!");
-                return;
-            }
-            init();
         });
-    </script>
-</body>
-</html>
+    });
+
+     // 2. Player Missiles vs Enemies
+     gameObjects.missiles.player.forEach(missile => {
+         if (missile.shouldRemove) return;
+         gameObjects.enemies.forEach(enemy => {
+             if (!enemy.shouldRemove && missile.collidesWith(enemy)) {
+                  if (enemy.takeDamage(missile.damage)) {
+                      score += enemy.score_value;
+                      gameObjects.effects.push(new Explosion(enemy.centerX, enemy.centerY, enemy.width * 1.5, enemy.color || MAGENTA, 400)); // Larger explosion
+                      if (enemy instanceof Boss) {
+                         bossDefeated = true;
+                         console.log("Boss defeated flag SET by missile");
+                     }
+                  }
+                  missile.shouldRemove = true; // Missile removed on hit
+                  gameObjects.effects.push(new Explosion(missile.centerX, missile.centerY, 30, missile.color, 250)); // Missile explosion
+             }
+         });
+     });
+
+    // 3. Enemy Bullets vs Player
+    gameObjects.bullets.enemy.forEach(bullet => {
+        if (!bullet.shouldRemove && bullet.collidesWith(player)) {
+             player.takeDamage(bullet.damage);
+             bullet.shouldRemove = true;
+             gameObjects.effects.push(new Explosion(bullet.centerX, bullet.centerY, 10, bullet.color, 100));
+        }
+    });
+
+     // 4. Enemy Missiles vs Player
+     gameObjects.missiles.enemy.forEach(missile => {
+         if (!missile.shouldRemove && missile.collidesWith(player)) {
+              player.takeDamage(missile.damage);
+              missile.shouldRemove = true;
+              gameObjects.effects.push(new Explosion(missile.centerX, missile.centerY, 25, missile.color, 200));
+         }
+     });
+
+      // 5. Player vs Powerups
+      gameObjects.powerups.forEach(powerup => {
+          if (!powerup.shouldRemove && powerup.collidesWith(player)) {
+               player.applyPowerup(powerup.type);
+               powerup.shouldRemove = true;
+               // Add pickup effect/sound later
+          }
+      });
+
+     // 6. Enemy Bullets/Missiles vs Drones (Optional - can add complexity)
+     // Could iterate through drones and enemy projectiles here if desired.
+
+      // 7. Player vs Enemy Collision (Optional - add if needed)
+      // gameObjects.enemies.forEach(enemy => { ... });
+}
+
+// --- Spawning Logic ---
+function handleSpawning(now, elapsedTime) {
+    // Enemy Spawning (only before boss or during boss stage with different delay)
+    const currentEnemyDelay = (bossSpawned && gameObjects.boss) ? bossStageEnemySpawnDelay : enemySpawnDelay;
+    if (!bossDefeated && now - lastEnemySpawn > currentEnemyDelay) {
+        lastEnemySpawn = now;
+        const r = Math.random();
+        let enemy;
+        if (!bossSpawned && r < 0.70) { // Higher chance of small before boss
+             enemy = new EnemySmall();
+        } else if (!bossSpawned) {
+             enemy = new EnemyMedium(gameObjects.player);
+        } else { // During boss stage, spawn mostly small ones?
+             if (r < 0.85) enemy = new EnemySmall();
+             else enemy = new EnemyMedium(gameObjects.player);
+        }
+
+        if (enemy) {
+            gameObjects.enemies.push(enemy);
+        }
+
+        // Reduce delay only if not in boss stage fixed delay
+        if (!bossSpawned || !gameObjects.boss) {
+            enemySpawnDelay = Math.max(enemySpawnDelayMin, enemySpawnDelay * enemySpawnReductionFactor);
+        }
+    }
+
+     // Boss Spawning
+     if (!bossSpawned && !bossDefeated && timeRemaining <= BOSS_APPEAR_TIME) {
+         console.log("BOSS APPROACHING!");
+         boss = new Boss(); // Create the boss
+         gameObjects.enemies.push(boss); // Add to enemies array for collision checks
+         gameObjects.boss = boss;      // Store single boss reference
+         bossSpawned = true;
+         // Set enemy spawn delay for boss stage
+         enemySpawnDelay = bossStageEnemySpawnDelay;
+     }
+
+      // Powerup Spawning
+      if (now - lastPowerupSpawn > POWERUP_SPAWN_RATE * getRandomFloat(0.8, 1.2)) {
+         lastPowerupSpawn = now;
+         // Spawn powerup at random location (avoid edges)
+         const px = getRandomInt(100, SCREEN_WIDTH - 100);
+         const py = getRandomInt(50, SCREEN_HEIGHT - 150);
+         const powerup = new PowerUp([px, py]);
+         gameObjects.powerups.push(powerup);
+     }
+}
+
+// --- Cleanup Function ---
+function cleanupObjects() {
+    // Filter main arrays
+    gameObjects.drones = gameObjects.drones.filter(o => !o.shouldRemove);
+    gameObjects.enemies = gameObjects.enemies.filter(o => !o.shouldRemove);
+    gameObjects.powerups = gameObjects.powerups.filter(o => !o.shouldRemove);
+    gameObjects.effects = gameObjects.effects.filter(o => !o.shouldRemove);
+
+    // Filter nested bullet/missile arrays
+    gameObjects.bullets.player = gameObjects.bullets.player.filter(o => !o.shouldRemove);
+    gameObjects.bullets.enemy = gameObjects.bullets.enemy.filter(o => !o.shouldRemove);
+    gameObjects.missiles.player = gameObjects.missiles.player.filter(o => !o.shouldRemove);
+    gameObjects.missiles.enemy = gameObjects.missiles.enemy.filter(o => !o.shouldRemove);
+
+     // Check if boss was removed
+     if (gameObjects.boss && gameObjects.boss.shouldRemove) {
+         gameObjects.boss = null; // Clear the specific boss reference
+         boss = null; // Clear global ref too
+     }
+      // Check if player was removed
+      if (gameObjects.player && gameObjects.player.shouldRemove && !isGameOver) {
+           isGameOver = true;
+           playerWon = false;
+           console.log("Player died, setting game over.");
+      }
+}
+
+
+// --- Main Game Loop ---
+function gameLoop(currentTime) {
+    // Calculate delta time
+    if (!lastTime) lastTime = currentTime;
+    const dt = (currentTime - lastTime) / 1000.0; // Delta time in seconds
+    lastTime = currentTime;
+
+     // Prevent large dt jumps if tab loses focus
+     const maxDt = 1 / 20; // Limit to 20 FPS equivalent
+     const actualDt = Math.min(dt, maxDt);
+
+
+    // Handle Game Over State
+    if (isGameOver) {
+        ctx.fillStyle = BLACK; // Clear screen for game over
+        ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        show_game_over_screen(ctx, playerWon, score);
+
+        // Check for restart input
+        if (keysPressed['y'] || keysPressed['Y']) {
+            initGame(); // Restart the game
+        } else if (keysPressed['n'] || keysPressed['N']) {
+            // How to "quit" in browser? Stop the loop.
+            console.log("Quitting game.");
+            // Maybe display a "Thanks for playing" message
+             draw_text(ctx, "Thanks for playing!", 30, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.8, WHITE, "center", "middle");
+             // No more animation frames
+             animationFrameId = null; // Stop requesting new frames
+             return;
+        }
+         // Keep requesting frames to listen for input
+         animationFrameId = requestAnimationFrame(gameLoop);
+         return; // Skip rest of loop if game over
+    }
+
+
+    // --- Update Game State ---
+    const now = performance.now();
+    const elapsedTime = (now - gameStartTime) / 1000.0;
+    timeRemaining = Math.max(0, GAME_DURATION - elapsedTime);
+
+    // --- Input ---
+    // Input is handled by event listeners updating keysPressed
+
+    // --- Spawning ---
+    handleSpawning(now, elapsedTime);
+
+    // --- Update ---
+    // Update Player
+    if (gameObjects.player) gameObjects.player.update(actualDt);
+    // Update Drones
+    gameObjects.drones.forEach(d => d.update(actualDt));
+    // Update Enemies (including Boss)
+    gameObjects.enemies.forEach(e => e.update(actualDt));
+    // Update Bullets
+    gameObjects.bullets.player.forEach(b => b.update(actualDt));
+    gameObjects.bullets.enemy.forEach(b => b.update(actualDt));
+    // Update Missiles
+    gameObjects.missiles.player.forEach(m => m.update(actualDt));
+    gameObjects.missiles.enemy.forEach(m => m.update(actualDt));
+    // Update Powerups
+    gameObjects.powerups.forEach(p => p.update(actualDt));
+    // Update Effects
+    gameObjects.effects.forEach(ef => ef.update(actualDt));
+
+
+    // --- Collisions ---
+    handleCollisions();
+
+
+    // --- Drawing ---
+    // Clear Screen
+    ctx.fillStyle = BLACK;
+    ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    // Draw Game Objects (order matters for layers)
+    gameObjects.enemies.forEach(e => e.draw(ctx)); // Draw enemies first
+    gameObjects.powerups.forEach(p => p.draw(ctx));
+    gameObjects.bullets.enemy.forEach(b => b.draw(ctx));
+    gameObjects.missiles.enemy.forEach(m => m.draw(ctx));
+    gameObjects.bullets.player.forEach(b => b.draw(ctx));
+    gameObjects.missiles.player.forEach(m => m.draw(ctx));
+    gameObjects.drones.forEach(d => d.draw(ctx));
+    if (gameObjects.player) gameObjects.player.draw(ctx); // Draw player
+    if (gameObjects.player) gameObjects.player.draw_lock_on(ctx); // Draw lock-on indicator over player/enemies
+
+    // Draw Effects Last (on top)
+    gameObjects.effects.forEach(ef => ef.draw(ctx));
+
+    // Draw HUD
+    drawHUD(ctx);
+
+
+    // --- Cleanup ---
+    cleanupObjects(); // Remove objects marked with shouldRemove
+
+
+    // --- Check Win/Loss Conditions ---
+     if (!isGameOver) { // Re-check after updates/cleanup
+         if (timeRemaining <= 0) {
+             console.log("Time's Up!");
+             isGameOver = true;
+             playerWon = bossDefeated; // Win only if boss is defeated when time runs out
+         } else if (bossDefeated) {
+              // Check if boss object is actually gone now
+             if (!gameObjects.boss) {
+                 console.log("Victory Condition Met (Boss Defeated)!");
+                 isGameOver = true;
+                 playerWon = true;
+             }
+         }
+         // Player death check is inside cleanupObjects
+     }
+
+
+    // Request Next Frame
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+
+// --- Start the Game ---
+// Don't initGame() immediately, let the game over screen show first.
+// The loop will start, detect isGameOver=true, show the screen, and wait for 'Y'.
+lastTime = performance.now(); // Initialize lastTime for the first frame dt calc
+animationFrameId = requestAnimationFrame(gameLoop);
