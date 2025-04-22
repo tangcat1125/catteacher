@@ -1,126 +1,107 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>貓老師的工具庫</title>
   <style>
     body {
+      margin: 0;
       font-family: sans-serif;
       background: #f5f5f5;
-      margin: 0;
-      padding: 0;
-      line-height: 1.6;
     }
     header {
       background: #ff9900;
       color: white;
       padding: 20px;
       text-align: center;
-      font-size: 6vw;
+      font-size: 24px;
     }
     .section {
       background: white;
-      margin: 5vw auto;
-      padding: 5vw;
+      margin: 20px auto;
+      padding: 20px;
       max-width: 800px;
-      border-radius: 10px;
-      box-sizing: border-box;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
     }
     .counter {
-      font-size: 4vw;
+      font-size: 14px;
       color: gray;
-      margin-top: 2vw;
+      margin-top: 10px;
     }
-    a.download, a.return {
-      display: inline-block;
-      margin-top: 4vw;
+    .paw {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 28px;
       text-decoration: none;
-      font-weight: bold;
-      padding: 3vw 5vw;
-      border-radius: 8px;
-      font-size: 4vw;
     }
-    a.download {
-      background: #ff9900;
-      color: white;
-    }
-    a.return {
-      background: #ffffff;
-      border: 2px solid #ff9900;
-      color: #ff9900;
-    }
-    footer {
-      text-align: center;
-      font-size: 3vw;
-      color: gray;
-      margin: 40px 0;
-    }
-    @media (min-width: 768px) {
-      header { font-size: 32px; }
-      .counter { font-size: 16px; }
-      a.download, a.return { font-size: 16px; padding: 10px 20px; }
-      footer { font-size: 14px; }
+    @media (max-width: 600px) {
+      header {
+        font-size: 20px;
+      }
+      .section {
+        margin: 10px;
+        padding: 15px;
+      }
     }
   </style>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
 </head>
 <body>
+  <header>🐾 貓老師的工具庫 🧰</header>
 
-<header>🐱 貓老師的工具庫 📦</header>
+  <div class="section">
+    <h2>📁 EXE 遊戲下載區</h2>
+    <p><a href="game1.html">點我前往貓老師的 EXE 遊戲下載區</a></p>
+    <div class="counter">🔢 你是第 <span id="count1">...</span> 位開啟這區的訪客</div>
+  </div>
 
-<div class="section">
-  <h2>✨ EXE 遊戲下載區</h2>
-  <p><a class="download" href="game1.html">點我前往貓老師的 EXE 遊戲下載區</a></p>
-  <div class="counter">🔢 你是第 <span id="count1">0</span> 位開啟這個功能的訪客</div>
-</div>
+  <div class="section">
+    <h2>🌐 線上遊戲概念區</h2>
+    <p>這裡展示各種用 HTML 製作的貓老師互動小遊戲，例如貓抓老鼠、飛機射擊、追蹤彈系統等！</p>
+    <p>
+      <a href="index.html">🐱 貓抓老鼠</a>
+      ｜
+      <a href="shoot.html">🚀 飛機射擊</a>
+    </p>
+    <div class="counter">🔢 你是第 <span id="count2">...</span> 位探索這區的訪客</div>
+  </div>
 
-<div class="section">
-  <h2>🕹️ 線上遊戲概念區</h2>
-  <p>這裡展示不需安裝 HTML 製作的貓老師互動小遊戲，例如貓抓老鼠、飛機射擊、追蹤彈系統等！</p>
-  <p><a href="index.html">🐭 貓抓老鼠</a>｜<a href="shoot.html">🚀 飛機射擊</a></p>
-  <div class="counter">🔍 你是第 <span id="count2">0</span> 位探索這區的訪客</div>
-</div>
+  <a href="index.html" class="paw">🐾</a>
 
-<a class="return" href="index.html">🐾 回首頁</a>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-<footer>
-  🕓 本頁最後更新時間：<span id="last-updated"></span>
-</footer>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDcPdx16YW6NrgLixPzcCEbEQEp5W_m81k",
+      authDomain: "cattools-counter.firebaseapp.com",
+      databaseURL: "https://cattools-counter-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "cattools-counter",
+      storageBucket: "cattools-counter.appspot.com",
+      messagingSenderId: "391811031172",
+      appId: "1:391811031172:web:e8182202e16e1ddc7c22d1",
+      measurementId: "G-TTTSWNXS8Y"
+    };
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDcPdx16YW6NrgLixPzcCEbEQEp5W_m81k",
-    authDomain: "cattools-counter.firebaseapp.com",
-    projectId: "cattools-counter",
-    storageBucket: "cattools-counter.appspot.com",
-    messagingSenderId: "391811031172",
-    appId: "1:391811031172:web:e8182202e16e1ddc7c22d1",
-    measurementId: "G-TTTSWNXS8Y"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-  function countAndDisplay(refName, spanId) {
-    const ref = db.ref(refName);
-    ref.transaction(val => (val || 0) + 1).then(res => {
-      document.getElementById(spanId).textContent = res.snapshot.val();
-    });
-  }
+    // 計數器更新邏輯
+    function updateCounter(id, path) {
+      const counterRef = ref(db, path);
+      get(counterRef).then(snapshot => {
+        let count = snapshot.exists() ? snapshot.val() : 0;
+        count++;
+        set(counterRef, count);
+        document.getElementById(id).textContent = count;
+      });
+    }
 
-  countAndDisplay("counter_tools_exe", "count1");
-  countAndDisplay("counter_tools_web", "count2");
-
-  const updateSpan = document.getElementById("last-updated");
-  const now = new Date();
-  updateSpan.textContent = now.toLocaleDateString("zh-TW", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-</script>
-
+    updateCounter("count1", "counter_tools_exe");
+    updateCounter("count2", "counter_tools_web");
+  </script>
 </body>
 </html>
