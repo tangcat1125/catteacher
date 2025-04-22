@@ -6,15 +6,15 @@
   <style>
     body {
       font-family: sans-serif;
-      background: #f5f5f5;
+      background: #fafafa;
       margin: 0;
       padding: 0;
     }
     header {
       background: orange;
+      color: white;
       padding: 20px;
       text-align: center;
-      color: white;
       font-size: 28px;
     }
     .section {
@@ -22,53 +22,57 @@
       margin: 20px auto;
       padding: 20px;
       max-width: 800px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .fb-link {
-      color: #1877f2;
-      text-decoration: none;
-    }
-    .btn {
-      background: orange;
-      color: white;
-      padding: 10px 16px;
-      border: none;
       border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
+      box-shadow: 0 0 8px #ccc;
     }
-    .center {
-      text-align: center;
+    .counter {
+      font-size: 14px;
+      color: gray;
+      margin-top: 10px;
     }
     canvas {
-      background: #efefef;
+      background: #eee;
       display: block;
-      margin: 20px auto;
-      cursor: pointer;
+      margin: 10px auto;
+      border: 1px solid #ccc;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: orange;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    img.footer-logo {
+      display: block;
+      margin: 40px auto 20px;
+      max-width: 300px;
     }
   </style>
 </head>
 <body>
-  <header>🐱 貓老師首頁</header>
+  <header>🐱 貓老師首頁 📦</header>
 
   <div class="section">
-    <h2>📌 最新消息（Facebook 超連結）</h2>
-    <p>👉 <a href="https://www.facebook.com/kemi.tang" target="_blank" class="fb-link">前往 Facebook 查看貓老師的最新消息</a></p>
+    <h2>📌 最新消息</h2>
+    <p>👉 <a href="https://www.facebook.com/kemi.tang" target="_blank">點我前往貓老師的 Facebook 粉專</a></p>
   </div>
 
   <div class="section">
-    <h2>🐭 追老鼠小遊戲</h2>
-    <img src="images/white_cat_ai_studio_h300_equal.png" alt="白貓 AI 工作室" style="max-width: 300px; display: block; margin: 0 auto 20px auto;">
-    <p class="center">用方向鍵控制橘色方塊（貓），去碰灰色圓點（老鼠）！</p>
+    <h2>🐭 互動遊戲：貓抓老鼠</h2>
+    <p>使用方向鍵控制橘色方塊（貓）去碰灰色圓點（老鼠）！</p>
     <canvas id="game" width="600" height="400"></canvas>
-    <div class="center">點擊次數：<span id="count">0</span></div>
+    <div>點擊次數：<span id="count">0</span></div>
   </div>
 
   <div class="section">
-    <h2>🔗 前往功能區</h2>
-    <p>🐾 <a href="tools.html">點我前往工具庫</a></p>
+    <h2>🐾 前往功能區</h2>
+    <a href="tools.html" class="btn">點我前往工具庫 🐾</a>
   </div>
+
+  <img src="images/white_cat_ai_studio_h300_equal.png" alt="白貓AI工作室" class="footer-logo">
 
   <script>
     const canvas = document.getElementById('game');
@@ -86,6 +90,7 @@
       if (e.key === 'ArrowLeft') cat.x -= step;
       if (e.key === 'ArrowRight') cat.x += step;
 
+      // 限制邊界
       cat.x = Math.max(0, Math.min(canvas.width - cat.size, cat.x));
       cat.y = Math.max(0, Math.min(canvas.height - cat.size, cat.y));
     });
@@ -97,9 +102,10 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 畫貓（橘）
       ctx.fillStyle = 'orange';
       ctx.fillRect(cat.x, cat.y, cat.size, cat.size);
-
+      // 畫老鼠（灰）
       ctx.fillStyle = 'gray';
       ctx.beginPath();
       ctx.arc(mouse.x, mouse.y, mouse.size, 0, Math.PI * 2);
@@ -108,13 +114,12 @@
       const dx = cat.x + cat.size / 2 - mouse.x;
       const dy = cat.y + cat.size / 2 - mouse.y;
       if (Math.hypot(dx, dy) < cat.size / 2 + mouse.size) {
-        alert('🐱 成功抓到老鼠！準備進入工具庫 🧰');
-        window.location.href = 'tools.html';
+        alert('✅成功抓到老鼠！準備進入工具庫 🐾');
+        window.location.href = "tools.html";
       }
 
       requestAnimationFrame(draw);
     }
-
     draw();
   </script>
 </body>
