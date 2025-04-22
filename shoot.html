@@ -72,6 +72,7 @@
   function update() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // 玩家移動
     if (keys['ArrowUp']) player.y -= player.speed;
     if (keys['ArrowDown']) player.y += player.speed;
     if (keys['ArrowLeft']) player.x -= player.speed;
@@ -82,26 +83,31 @@
 
     drawPlayer();
 
+    // 子彈
     bullets.forEach((b, i) => {
       b.x += 8;
       drawBullet(b);
       if (b.x > canvas.width) bullets.splice(i, 1);
     });
 
+    // 敵人生成
     if (Math.random() < 0.02) {
       enemies.push({ x: canvas.width, y: Math.random() * (canvas.height - 30) });
     }
 
+    // 敵人更新與碰撞
     enemies.forEach((e, ei) => {
       e.x -= 2;
       drawEnemy(e);
 
+      // 撞到玩家
       if (Math.abs(e.x - player.x) < 24 && Math.abs(e.y - player.y) < 24) {
         enemies.splice(ei, 1);
         hp--;
         if (hp <= 0) endGame();
       }
 
+      // 撞到子彈
       bullets.forEach((b, bi) => {
         if (Math.abs(b.x - e.x) < 24 && Math.abs(b.y - e.y) < 24) {
           enemies.splice(ei, 1);
