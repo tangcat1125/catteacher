@@ -1,144 +1,233 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>狼來了 - HTML5 修正版</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f0f0f0;
-      text-align: center;
-    }
-    h1 {
-      background: darkred;
-      color: white;
-      padding: 16px;
-      margin: 0;
-    }
-    canvas {
-      background: #fff;
-      margin: 20px auto;
-      display: block;
-      border: 4px solid red;
-    }
-    #message {
-      font-size: 20px;
-      margin-top: 10px;
-    }
-    .instruction {
-      font-size: 16px;
-      margin-top: 10px;
-      color: #444;
-    }
-    .btn {
-      background: darkred;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .paw {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      font-size: 28px;
-      text-decoration: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Wolf Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
+        }
+        canvas {
+            border: 1px solid #fff;
+        }
+    </style>
 </head>
 <body>
-  <h1>🎮 我要抓到小野狼（爆炸紅光版）</h1>
-  <p class="instruction">🎯 使用鍵盤方向鍵移動橘貓，靠近灰色圓形狼。限時內抓到牠，會有爆炸特效！</p>
-  <canvas id="game" width="600" height="400"></canvas>
-  <p id="message">使用方向鍵移動，找出大野狼！</p>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-  <a href="student.html" class="paw">🐾</a>
+        // Game settings
+        const WIDTH = 800, HEIGHT = 600;
+        const PLAYER_SIZE = 40, PLAYER_SPEED = 5;
+        const TREE_SIZE = 60, OBSTACLE_SIZE = 50;
+        const LEVELS = 5;
+        const TREES_PER_LEVEL = [5, 7, 9, 11, 13];
+        const TIME_PER_LEVEL = [20, 20, 25, 30, 35];
+        const COLORS = {
+            WHITE: '#FFFFFF',
+            BLACK: '#000000',
+            GREEN: '#228B22',
+            GREY: '#A9A9A9',
+            YELLOW: '#FFFF00',
+            RED: '#FF0000'
+        };
 
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+        // Game state
+        let playerPos = [WIDTH / 2 - PLAYER_SIZE / 2, HEIGHT - PLAYER_SIZE - 10];
+        let score = 0, lives = 3, currentLevel = 0;
+        let positions = [], wolfIdx, rabbitIdx, obstacles = [];
+        let startTime, hintInterval = 7000, nextHintTime;
+        let rabbitMoved = false, rabbitMoveTime;
+        let caught = false, showHint = false, directionHint = '';
+        let gameOver = false;
 
-    const player = { x: 50, y: 50, size: 40 };
-    const wolf = { x: Math.random() * 500 + 50, y: Math.random() * 300 + 50, size: 30, visible: true };
-    let timeLeft = 30;
-    let flash = false;
+        // Keyboard input
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+        window.addEventListener('keydown', e => {
+            if (e.key === ' ' && !gameOver) {
+                // Attempt to catch
+                const px = playerPos[0], py = playerPos[1];
+                for (let i = 0; i < positions.length; i++) {
+                    const [x, y] = positions[i];
+                    if (px + PLAYER_SIZE / 2 >= x && px + PLAYER_SIZE / 2 <= x + TREE_SIZE &&
+                        py + PLAYER_SIZE / 2 >= y && py + PLAYER_SIZE / 2 <= y + TREE_SIZE) {
+                        if (i === wolfIdx) score += 100;
+                        else lives -= 1;
+                        caught = true;
+                    }
+                }
+            }
+        });
 
-    function drawPlayer() {
-      ctx.fillStyle = "orange";
-      ctx.fillRect(player.x, player.y, player.size, player.size);
-    }
-
-    function drawWolf() {
-      if (wolf.visible) {
-        ctx.fillStyle = "gray";
-        ctx.beginPath();
-        ctx.arc(wolf.x, wolf.y, wolf.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    function drawBorderFlash() {
-      if (flash && timeLeft <= 5) {
-        canvas.style.borderColor = canvas.style.borderColor === "red" ? "yellow" : "red";
-      }
-    }
-
-    function update() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawPlayer();
-      drawWolf();
-      drawBorderFlash();
-
-      const dx = player.x + player.size / 2 - wolf.x;
-      const dy = player.y + player.size / 2 - wolf.y;
-      if (Math.hypot(dx, dy) < player.size / 2 + wolf.size) {
-        wolf.visible = false;
-        document.getElementById("message").innerHTML = "🎉 成功抓到大野狼！爆炸特效💥！";
-        ctx.fillStyle = "red";
-        ctx.font = "48px sans-serif";
-        ctx.fillText("💥 BOOM! 💥", 180, 200);
-      }
-    }
-
-    document.addEventListener("keydown", (e) => {
-      const step = 10;
-      switch (e.key) {
-        case "ArrowUp": player.y -= step; break;
-        case "ArrowDown": player.y += step; break;
-        case "ArrowLeft": player.x -= step; break;
-        case "ArrowRight": player.x += step; break;
-      }
-      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
-    });
-
-    function timerCountdown() {
-      const msg = document.getElementById("message");
-      const timer = setInterval(() => {
-        timeLeft--;
-        if (!wolf.visible) return clearInterval(timer);
-        if (timeLeft <= 5) flash = true;
-        if (timeLeft <= 0) {
-          msg.textContent = "❌ 時間到！你沒抓到大野狼...";
-          wolf.visible = false;
-          clearInterval(timer);
-        } else {
-          msg.textContent = `⏳ 剩餘時間：${timeLeft} 秒`;
+        // Helper functions
+        function drawText(text, x, y, color = COLORS.WHITE) {
+            ctx.fillStyle = color;
+            ctx.font = '36px Arial';
+            ctx.fillText(text, x, y);
         }
-      }, 1000);
-    }
 
-    function loop() {
-      update();
-      requestAnimationFrame(loop);
-    }
+        function getDirectionHint(playerPos, targetPos) {
+            const dx = targetPos[0] - playerPos[0];
+            const dy = targetPos[1] - playerPos[1];
+            return Math.abs(dx) > Math.abs(dy)
+                ? dx < 0 ? 'left' : 'right'
+                : dy < 0 ? 'up' : 'down';
+        }
 
-    timerCountdown();
-    loop();
-  </script>
+        function generateObstacles(numObstacles, margin = 50) {
+            const obstacles = [];
+            for (let i = 0; i < numObstacles; i++) {
+                const x = Math.random() * (WIDTH - 2 * margin - OBSTACLE_SIZE) + margin;
+                const y = Math.random() * (HEIGHT - 200 - OBSTACLE_SIZE) + margin;
+                obstacles.push([x, y]);
+            }
+            return obstacles;
+        }
+
+        function initLevel(level) {
+            const numTrees = TREES_PER_LEVEL[level];
+            const margin = 50;
+            positions = [];
+            for (let i = 0; i < numTrees; i++) {
+                const x = Math.random() * (WIDTH - margin - TREE_SIZE) + margin;
+                const y = Math.random() * (HEIGHT - 200 - TREE_SIZE) + margin;
+                positions.push([x, y]);
+            }
+            wolfIdx = Math.floor(Math.random() * numTrees);
+            rabbitIdx = Math.floor(Math.random() * (numTrees - 1));
+            if (rabbitIdx >= wolfIdx) rabbitIdx++;
+            obstacles = generateObstacles(3 * level);
+            startTime = performance.now();
+            nextHintTime = startTime + hintInterval;
+            rabbitMoveTime = startTime + (TIME_PER_LEVEL[level] * 500);
+            rabbitMoved = false;
+            caught = false;
+            showHint = false;
+        }
+
+        // Main game loop
+        function gameLoop() {
+            if (gameOver) {
+                ctx.fillStyle = COLORS.BLACK;
+                ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                drawText('Game Over', WIDTH / 2 - 80, HEIGHT / 2 - 30);
+                drawText(`Final Score: ${score}`, WIDTH / 2 - 120, HEIGHT / 2 + 10);
+                return;
+            }
+
+            const now = performance.now();
+            const elapsed = (now - startTime) / 1000;
+            const remainingTime = TIME_PER_LEVEL[currentLevel] - elapsed;
+
+            // Check for level end or game over
+            if (remainingTime <= 0) {
+                lives -= 1;
+                if (lives <= 0) {
+                    gameOver = true;
+                } else {
+                    currentLevel++;
+                    if (currentLevel >= LEVELS) gameOver = true;
+                    else initLevel(currentLevel);
+                }
+            }
+
+            // Handle player movement
+            if (keys['ArrowLeft']) playerPos[0] -= PLAYER_SPEED;
+            if (keys['ArrowRight']) playerPos[0] += PLAYER_SPEED;
+            if (keys['ArrowUp']) playerPos[1] -= PLAYER_SPEED;
+            if (keys['ArrowDown']) playerPos[1] += PLAYER_SPEED;
+            playerPos[0] = Math.max(0, Math.min(WIDTH - PLAYER_SIZE, playerPos[0]));
+            playerPos[1] = Math.max(0, Math.min(HEIGHT - PLAYER_SIZE, playerPos[1]));
+
+            // Rabbit movement
+            if (!rabbitMoved && now >= rabbitMoveTime) {
+                let newIdx = Math.floor(Math.random() * (positions.length - 1));
+                if (newIdx >= wolfIdx) newIdx++;
+                rabbitIdx = newIdx;
+                rabbitMoved = true;
+            }
+
+            // Direction hint
+            if (now >= nextHintTime) {
+                directionHint = getDirectionHint(playerPos, positions[wolfIdx]);
+                showHint = true;
+                nextHintTime += hintInterval;
+            }
+
+            // Draw everything
+            ctx.fillStyle = COLORS.BLACK;
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            // Draw trees
+            ctx.fillStyle = COLORS.GREEN;
+            for (const [x, y] of positions) {
+                ctx.fillRect(x, y, TREE_SIZE, TREE_SIZE);
+            }
+
+            // Draw obstacles
+            ctx.fillStyle = COLORS.GREY;
+            for (const [x, y] of obstacles) {
+                ctx.fillRect(x, y, OBSTACLE_SIZE, OBSTACLE_SIZE);
+            }
+
+            // Flash tree outlines in last 5 seconds
+            if (remainingTime <= 5) {
+                if (Math.floor(remainingTime * 2) % 2 === 0) {
+                    ctx.strokeStyle = COLORS.YELLOW;
+                    ctx.lineWidth = 3;
+                    for (const [x, y] of positions) {
+                        ctx.strokeRect(x, y, TREE_SIZE, TREE_SIZE);
+                    }
+                }
+            }
+
+            // Draw player
+            ctx.fillStyle = COLORS.RED;
+            ctx.fillRect(playerPos[0], playerPos[1], PLAYER_SIZE, PLAYER_SIZE);
+
+            // Draw red glow when time is low
+            if (remainingTime <= 5) {
+                ctx.strokeStyle = COLORS.RED;
+                ctx.lineWidth = 5;
+                ctx.strokeRect(0, 0, WIDTH, HEIGHT);
+            }
+
+            // Draw UI
+            drawText(`Level: ${currentLevel + 1}/${LEVELS}`, 10, 30);
+            drawText(`Score: ${score}`, 10, 70);
+            drawText(`Lives: ${lives}`, 10, 110);
+            drawText(`Time: ${Math.ceil(remainingTime)}`, 10, 150);
+            if (showHint) {
+                drawText(`Hint: Wolf is to the ${directionHint}`, WIDTH / 2 - 150, 30);
+            }
+
+            // Handle catch
+            if (caught) {
+                setTimeout(() => {
+                    caught = false;
+                    currentLevel++;
+                    if (currentLevel >= LEVELS) gameOver = true;
+                    else initLevel(currentLevel);
+                }, 500);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        initLevel(currentLevel);
+        gameLoop();
+    </script>
 </body>
 </html>
