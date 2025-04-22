@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>貓老師的首頁</title>
+  <meta charset="UTF-8">
+  <title>貓老師首頁</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: sans-serif;
-      background: #f5f5f5;
+      background: #f8f8f8;
       margin: 0;
       padding: 0;
     }
     header {
-      background: #ffa500;
-      color: white;
-      padding: 16px;
+      background: orange;
+      padding: 20px;
       text-align: center;
-      font-size: 24px;
+      font-size: 28px;
+      color: white;
     }
     .section {
       background: white;
@@ -24,107 +24,103 @@
       padding: 20px;
       max-width: 800px;
       border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-    .counter {
-      font-size: 14px;
-      color: gray;
+    canvas {
+      display: block;
+      margin: 0 auto;
+      border: 1px solid #ccc;
+      background: #eee;
+    }
+    .button {
+      display: inline-block;
+      background: orange;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      text-decoration: none;
       margin-top: 10px;
     }
-    iframe {
-      width: 100%;
-      max-width: 500px;
-      height: 220px;
-      border: none;
-    }
-    .fb-link {
-      display: inline-block;
-      margin-top: 8px;
-      padding: 6px 12px;
-      background: #3b5998;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-    }
-    footer {
+    .footer {
       text-align: center;
+      font-size: 12px;
       color: gray;
-      font-size: 13px;
-      margin: 20px 0;
-    }
-    @media screen and (max-width: 600px) {
-      header { font-size: 20px; }
-      .section { margin: 10px; padding: 16px; }
+      margin: 30px 0;
     }
   </style>
 </head>
 <body>
-  <header>🐱 貓老師的工具首頁 📦</header>
+  <header>🐱 貓老師首頁 📦</header>
 
   <div class="section">
-    <h2>📌 最新消息（Facebook 嵌入）</h2>
-    <iframe src="https://www.facebook.com/plugins/post.php?href=https://www.facebook.com/kemi.tang/posts/pfbid02&show_text=true&width=500" allowfullscreen></iframe>
-    <br />
-    <a href="https://www.facebook.com/kemi.tang" target="_blank" class="fb-link">🔗 前往 Facebook 最新訊息</a>
+    <h2>📌 最新消息（Facebook 超連結）</h2>
+    <p>👉 <a href="https://www.facebook.com/kemi.tang" target="_blank">前往 Facebook 追蹤最新公告</a></p>
   </div>
 
   <div class="section">
-    <h2>🐭 追 🐱 小遊戲</h2>
+    <h2>🐭 互動遊戲：貓抓老鼠</h2>
     <p>用方向鍵控制橘色方塊（貓），去碰灰色圓點（老鼠）！</p>
     <canvas id="game" width="600" height="400"></canvas>
-    <div class="counter">🔢 點擊次數：<span id="count">0</span></div>
-    <script>
-      const canvas = document.getElementById('game');
-      const ctx = canvas.getContext('2d');
-      const countSpan = document.getElementById('count');
-      let clickCount = 0;
-      let cat = { x: 50, y: 50, size: 40 };
-      let mouse = { x: 300, y: 200, size: 20 };
-
-      canvas.addEventListener('click', () => {
-        clickCount++;
-        countSpan.textContent = clickCount;
-      });
-
-      document.addEventListener('keydown', e => {
-        const step = 10;
-        if (e.key === 'ArrowUp') cat.y -= step;
-        if (e.key === 'ArrowDown') cat.y += step;
-        if (e.key === 'ArrowLeft') cat.x -= step;
-        if (e.key === 'ArrowRight') cat.x += step;
-        cat.x = Math.max(0, Math.min(canvas.width - cat.size, cat.x));
-        cat.y = Math.max(0, Math.min(canvas.height - cat.size, cat.y));
-      });
-
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'orange';
-        ctx.fillRect(cat.x, cat.y, cat.size, cat.size);
-
-        ctx.beginPath();
-        ctx.fillStyle = 'gray';
-        ctx.arc(mouse.x, mouse.y, mouse.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        const dx = cat.x + cat.size / 2 - mouse.x;
-        const dy = cat.y + cat.size / 2 - mouse.y;
-        if (Math.hypot(dx, dy) < cat.size / 2 + mouse.size) {
-          alert('抓到老鼠了！');
-          mouse.x = Math.random() * (canvas.width - 40) + 20;
-          mouse.y = Math.random() * (canvas.height - 40) + 20;
-        }
-
-        requestAnimationFrame(draw);
-      }
-      draw();
-    </script>
+    <div id="clickCounter">點擊次數：<span id="count">0</span></div>
   </div>
 
   <div class="section">
-    <h2>🧰 前往功能區</h2>
-    <p><a href="tools.html">點我前往工具庫</a></p>
+    <h2>🐾 前往功能區</h2>
+    <p><a class="button" href="tools.html">點我前往工具庫</a></p>
   </div>
 
-  <footer>🕓 本頁最後更新時間：<script>document.write(new Date().toLocaleString());</script></footer>
+  <div class="footer">
+    ⏲️ 本頁最後更新時間：2025-04-22
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const countSpan = document.getElementById('count');
+    let clickCount = 0;
+
+    let cat = { x: 50, y: 50, size: 40 };
+    let mouse = { x: 300, y: 200, size: 20 };
+
+    document.addEventListener('keydown', e => {
+      const step = 10;
+      if (e.key === 'ArrowUp') cat.y -= step;
+      if (e.key === 'ArrowDown') cat.y += step;
+      if (e.key === 'ArrowLeft') cat.x -= step;
+      if (e.key === 'ArrowRight') cat.x += step;
+
+      cat.x = Math.max(0, Math.min(canvas.width - cat.size, cat.x));
+      cat.y = Math.max(0, Math.min(canvas.height - cat.size, cat.y));
+    });
+
+    canvas.addEventListener('click', () => {
+      clickCount++;
+      countSpan.textContent = clickCount;
+    });
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'orange';
+      ctx.fillRect(cat.x, cat.y, cat.size, cat.size);
+
+      ctx.fillStyle = 'gray';
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, mouse.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      const dx = cat.x + cat.size / 2 - mouse.x;
+      const dy = cat.y + cat.size / 2 - mouse.y;
+      if (Math.hypot(dx, dy) < cat.size / 2 + mouse.size) {
+        alert('抓到了老鼠！');
+        mouse.x = Math.random() * (canvas.width - 40) + 20;
+        mouse.y = Math.random() * (canvas.height - 40) + 20;
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+  </script>
 </body>
 </html>
