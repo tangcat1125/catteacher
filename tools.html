@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>貓老師的工具庫</title>
+  <style>
+    body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    header { background: #ff9900; color: white; padding: 20px; text-align: center; font-size: 24px; }
+    .section { background: white; margin: 20px auto; padding: 20px; max-width: 800px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .counter { font-size: 14px; color: gray; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<header>🐱 貓老師的工具庫 🧰</header>
+
+<div class="section">
+  <h2>📦 EXE 遊戲下載區</h2>
+  <p><a href="game1.exe" download>下載 1 號遊戲（Windows）</a></p>
+  <div class="counter">🔢 你是第 <span id="count1">0</span> 位開啟這區的訪客</div>
+</div>
+
+<div class="section">
+  <h2>🌐 線上遊戲概念區</h2>
+  <p>這裡展示各種用 HTML 製作的貓老師互動小遊戲，例如貓抓老鼠、飛機射擊、追蹤彈系統等！</p>
+  <p><a href="index.html">▶️ 貓抓老鼠</a> | <a href="shoot.html">🚀 飛機射擊</a></p>
+  <div class="counter">🔢 你是第 <span id="count2">0</span> 位探索這區的訪客</div>
+</div>
+
+<script>
+  // 模擬簡單計數器（用 localStorage）
+  function incrementAndDisplay(id, key) {
+    let count = localStorage.getItem(key) || 0;
+    count++;
+    localStorage.setItem(key, count);
+    document.getElementById(id).textContent = count;
+  }
+
+  incrementAndDisplay("count1", "counter_tools_exe");
+  incrementAndDisplay("count2", "counter_tools_web");
+</script>
+
+</body>
+</html>
