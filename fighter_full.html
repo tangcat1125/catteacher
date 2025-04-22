@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三角鐵 vs 飛碟魔王</title>
+  <style>
+    body { margin: 0; background: #000; color: white; font-family: sans-serif; text-align: center; }
+    canvas { display: block; margin: auto; background: #000; border: 2px solid white; }
+    .mobile-controls {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+    }
+    .mobile-controls button {
+      font-size: 20px;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: white;
+      color: black;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 三角鐵 vs 飛碟魔王</h1>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div class="mobile-controls">
+    <button onclick="move('left')">⬅️</button>
+    <button onclick="move('right')">➡️</button>
+    <button onclick="fire()">🔫 發射</button>
+    <button onclick="clearAll()">💥 大招</button>
+  </div>
+  <script>
+    // 小白正在導入：飛機移動、射擊、魔王、子機進化、輔具功能，敬請期待完整版！
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.font = '24px sans-serif';
+    ctx.fillText('🚧 遊戲建構中... 稍後進入全戰鬥階段！', 200, 300);
+  </script>
+</body>
+</html>
