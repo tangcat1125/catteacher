@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>教案精靈指令產生器</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Microsoft JhengHei", sans-serif;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-sizing: border-box;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      font-size: 1.8em;
+    }
+    label, select, input[type=text], textarea {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      font-size: 1em;
+      box-sizing: border-box;
+    }
+    input, select, textarea {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .btn, .ai-btn {
+      margin-top: 15px;
+      background-color: #2c74d6;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 1em;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .btn:hover, .ai-btn:hover {
+      background-color: #1e5fbf;
+    }
+    .ai-btn {
+      background-color: #28a745;
+    }
+    .ai-btn:hover {
+      background-color: #218838;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .paw {
+      width: 40px;
+      cursor: pointer;
+    }
+    .studio-img {
+      display: block;
+      margin: 20px auto;
+      max-height: 120px;
+      width: auto;
+    }
+    @media screen and (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      .btn, .ai-btn {
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>教案精靈指令產生器</h1>
+    <img src="images/white_cat_ai_studio_h300_equal.png" class="studio-img" alt="白貓AI工作室">
+
+    <label>教學主題：</label>
+    <input type="text" id="topic">
+
+    <label>年級：</label>
+    <select id="grade">
+      <option>國小三年級</option>
+      <option>國小四年級</option>
+      <option>國小五年級</option>
+      <option>國小六年級</option>
+      <option>國中七年級</option>
+      <option>國中八年級</option>
+    </select>
+
+    <label>科目：</label>
+    <select id="subject">
+      <option>國語</option>
+      <option>社會</option>
+      <option>自然</option>
+      <option>數學</option>
+      <option>綜合活動</option>
+    </select>
+
+    <label>教學目標（建議三項）：</label>
+    <input type="text" id="goal1">
+    <input type="text" id="goal2">
+    <input type="text" id="goal3">
+
+    <button class="btn" onclick="generatePrompt()">✨ 產生教案指令</button>
+
+    <textarea id="output" rows="10" readonly></textarea>
+    <button class="btn" onclick="copyPrompt()">📋 複製指令</button>
+    <a class="ai-btn" href="https://chat.openai.com" target="_blank">🚀 開啟 ChatGPT 並貼上</a>
+
+    <div class="footer">
+      <p>👣 回到功能區</p>
+      <a href="https://tangcat1125.github.io/catteacher/tools.html">
+        <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="paw" class="paw">
+      </a>
+      <p>喜歡這個工具嗎？請到 <a href="https://www.facebook.com/share/p/159FQUFrYG/" target="_blank">貓老師的臉書按讚支持！</a> ❤️</p>
+    </div>
+  </div>
+
+  <script>
+    function generatePrompt() {
+      const topic = document.getElementById("topic").value;
+      const grade = document.getElementById("grade").value;
+      const subject = document.getElementById("subject").value;
+      const g1 = document.getElementById("goal1").value;
+      const g2 = document.getElementById("goal2").value;
+      const g3 = document.getElementById("goal3").value;
+
+      const text = `請幫我根據以下條件設計一份教案：\n` +
+        `教學主題：${topic}\n` +
+        `年級：${grade}\n` +
+        `科目：${subject}\n` +
+        `教學目標：\n1. ${g1}\n2. ${g2}\n3. ${g3}`;
+
+      document.getElementById("output").value = text;
+    }
+
+    function copyPrompt() {
+      const output = document.getElementById("output");
+      output.select();
+      document.execCommand("copy");
+      alert("已複製教案指令到剪貼簿！");
+    }
+  </script>
+</body>
+</html>
