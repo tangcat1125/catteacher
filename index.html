@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>🐱 追 🐭 小遊戲</title>
+  <style>
+    body { margin:0; font-family: sans-serif; text-align:center; }
+    canvas { background:#f0f0f0; display:block; margin:10px auto; cursor: pointer; }
+    #clickCounter { font-size:1.2em; margin: 8px; }
+    a.tool-link {
+      display:inline-block; margin-top:12px; padding:8px 16px;
+      background:#ff9900; color:#fff; text-decoration:none; border-radius:4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐱 追 🐭 小遊戲</h1>
+  <p>用方向鍵控制橘色方塊（貓），去碰灰色圓點（老鼠）！</p>
+  <canvas id="game" width="600" height="400"></canvas>
+  <div id="clickCounter">點擊次數：<span id="count">0</span></div>
+  <a class="tool-link" href="tools.html">準備進入貓老師的工具庫</a>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const countSpan = document.getElementById('count');
+    let clickCount = 0;
+
+    // 貓與老鼠初始設定
+    let cat   = {x:50, y:50, size:40};
+    let mouse = {x:300, y:200, size:20};
+
+    // 計算並顯示點擊次數
+    canvas.addEventListener('click', () => {
+      clickCount++;
+      countSpan.textContent = clickCount;
+    });
+
+    // 鍵盤控制貓移動
+    document.addEventListener('keydown', e => {
+      const step = 10;
+      if (e.key === 'ArrowUp')    cat.y -= step;
+      if (e.key === 'ArrowDown')  cat.y += step;
+      if (e.key === 'ArrowLeft')  cat.x -= step;
+      if (e.key === 'ArrowRight') cat.x += step;
+      // 邊界限制
+      cat.x = Math.max(0, Math.min(canvas.width - cat.size, cat.x));
+      cat.y = Math.max(0, Math.min(canvas.height - cat.size, cat.y));
+    });
+
+    // 主畫面重繪函式
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 畫貓（橘色方塊）
+      ctx.fillStyle = 'orange';
+      ctx.fillRect(cat.x, cat.y, cat.size, cat.size);
+      // 畫老鼠（灰色圓形）
+      ctx.fillStyle = 'gray';
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, mouse.size, 0, Math.PI * 2);
+      ctx.fill();
+      // 碰撞偵測
+      const dx = cat.x + cat.size/2 - mouse.x;
+      const dy = cat.y + cat.size/2 - mouse.y;
+      if (Math.hypot(dx, dy) < cat.size/2 + mouse.size) {
+        alert('抓到老鼠！遊戲結束');
+        // 重置老鼠位置
+        mouse.x = Math.random() * (canvas.width - 40) + 20;
+        mouse.y = Math.random() * (canvas.height - 40) + 20;
+      }
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+  </script>
+</body>
+</html>
