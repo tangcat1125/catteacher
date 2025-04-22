@@ -6,38 +6,57 @@
   <style>
     body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
     header { background: #ff9900; color: white; padding: 20px; text-align: center; font-size: 24px; }
-    .section { background: white; margin: 20px auto; padding: 20px; max-width: 800px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .section { background: white; margin: 20px auto; padding: 20px; max-width: 800px; border-radius: 10px; }
     .counter { font-size: 14px; color: gray; margin-top: 10px; }
+    a.download, a.return { display: inline-block; margin-top: 12px; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
+    a.download { background: #ff9900; color: white; }
+    a.return { background: #ffffff; border: 2px solid #ff9900; color: #ff9900; }
   </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
 </head>
 <body>
 
-<header>🐱 貓老師的工具庫 🧰</header>
+<header>🐱 貓老師的工具庫 📦</header>
 
 <div class="section">
-  <h2>📦 EXE 遊戲下載區</h2>
- <p><a href="game1.html">📦 點我前往貓老師的 EXE 遊戲下載區</a></p>
- <div class="counter">🔢 你是第 <span id="count1">0</span> 位開啟這區的訪客</div>
+  <h2>✨ EXE 遊戲下載區</h2>
+  <p><a class="download" href="game1.html">點我前往貓老師的 EXE 遊戲下載區</a></p>
+  <div class="counter">🔢 你是第 <span id="count1">0</span> 位開啟這個功能的訪客</div>
 </div>
 
 <div class="section">
-  <h2>🌐 線上遊戲概念區</h2>
-  <p>這裡展示各種用 HTML 製作的貓老師互動小遊戲，例如貓抓老鼠、飛機射擊、追蹤彈系統等！</p>
-  <p><a href="index.html">▶️ 貓抓老鼠</a> | <a href="shoot.html">🚀 飛機射擊</a></p>
-  <div class="counter">🔢 你是第 <span id="count2">0</span> 位探索這區的訪客</div>
+  <h2>🕹️ 線上遊戲概念區</h2>
+  <p>這裡展示不需安裝 HTML 製作的貓老師互動小遊戲，例如貓抓老鼠、飛機射擊、追蹤彈系統等！</p>
+  <p><a href="index.html">🐭 貓抓老鼠</a>｜<a href="shoot.html">🚀 飛機射擊</a></p>
+  <div class="counter">🔍 你是第 <span id="count2">0</span> 位探索這區的訪客</div>
 </div>
+
+<a class="return" href="index.html">🐾 回首頁</a>
 
 <script>
-  // 模擬簡單計數器（用 localStorage）
-  function incrementAndDisplay(id, key) {
-    let count = localStorage.getItem(key) || 0;
-    count++;
-    localStorage.setItem(key, count);
-    document.getElementById(id).textContent = count;
+  const firebaseConfig = {
+    apiKey: "AIzaSyDcPdx16YW6NrgLixPzcCEbEQEp5W_m81k",
+    authDomain: "cattools-counter.firebaseapp.com",
+    projectId: "cattools-counter",
+    storageBucket: "cattools-counter.appspot.com",
+    messagingSenderId: "391811031172",
+    appId: "1:391811031172:web:e8182202e16e1ddc7c22d1",
+    measurementId: "G-TTTSWNXS8Y"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function countAndDisplay(refName, spanId) {
+    const ref = db.ref(refName);
+    ref.transaction(val => (val || 0) + 1).then(res => {
+      document.getElementById(spanId).textContent = res.snapshot.val();
+    });
   }
 
-  incrementAndDisplay("count1", "counter_tools_exe");
-  incrementAndDisplay("count2", "counter_tools_web");
+  countAndDisplay("counter_tools_exe", "count1");
+  countAndDisplay("counter_tools_web", "count2");
 </script>
 
 </body>
