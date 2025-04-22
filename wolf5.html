@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>狼來了 - HTML5 修正版</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f0f0f0;
+      text-align: center;
+    }
+    h1 {
+      background: darkred;
+      color: white;
+      padding: 16px;
+      margin: 0;
+    }
+    canvas {
+      background: #fff;
+      margin: 20px auto;
+      display: block;
+      border: 4px solid red;
+    }
+    #message {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    .instruction {
+      font-size: 16px;
+      margin-top: 10px;
+      color: #444;
+    }
+    .btn {
+      background: darkred;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .paw {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 28px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 我要抓到小野狼（爆炸紅光版）</h1>
+  <p class="instruction">🎯 使用鍵盤方向鍵移動橘貓，靠近灰色圓形狼。限時內抓到牠，會有爆炸特效！</p>
+  <canvas id="game" width="600" height="400"></canvas>
+  <p id="message">使用方向鍵移動，找出大野狼！</p>
+
+  <a href="student.html" class="paw">🐾</a>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const player = { x: 50, y: 50, size: 40 };
+    const wolf = { x: Math.random() * 500 + 50, y: Math.random() * 300 + 50, size: 30, visible: true };
+    let timeLeft = 30;
+    let flash = false;
+
+    function drawPlayer() {
+      ctx.fillStyle = "orange";
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function drawWolf() {
+      if (wolf.visible) {
+        ctx.fillStyle = "gray";
+        ctx.beginPath();
+        ctx.arc(wolf.x, wolf.y, wolf.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawBorderFlash() {
+      if (flash && timeLeft <= 5) {
+        canvas.style.borderColor = canvas.style.borderColor === "red" ? "yellow" : "red";
+      }
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawWolf();
+      drawBorderFlash();
+
+      const dx = player.x + player.size / 2 - wolf.x;
+      const dy = player.y + player.size / 2 - wolf.y;
+      if (Math.hypot(dx, dy) < player.size / 2 + wolf.size) {
+        wolf.visible = false;
+        document.getElementById("message").innerHTML = "🎉 成功抓到大野狼！爆炸特效💥！";
+        ctx.fillStyle = "red";
+        ctx.font = "48px sans-serif";
+        ctx.fillText("💥 BOOM! 💥", 180, 200);
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const step = 10;
+      switch (e.key) {
+        case "ArrowUp": player.y -= step; break;
+        case "ArrowDown": player.y += step; break;
+        case "ArrowLeft": player.x -= step; break;
+        case "ArrowRight": player.x += step; break;
+      }
+      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+    });
+
+    function timerCountdown() {
+      const msg = document.getElementById("message");
+      const timer = setInterval(() => {
+        timeLeft--;
+        if (!wolf.visible) return clearInterval(timer);
+        if (timeLeft <= 5) flash = true;
+        if (timeLeft <= 0) {
+          msg.textContent = "❌ 時間到！你沒抓到大野狼...";
+          wolf.visible = false;
+          clearInterval(timer);
+        } else {
+          msg.textContent = `⏳ 剩餘時間：${timeLeft} 秒`;
+        }
+      }, 1000);
+    }
+
+    function loop() {
+      update();
+      requestAnimationFrame(loop);
+    }
+
+    timerCountdown();
+    loop();
+  </script>
+</body>
+</html>
