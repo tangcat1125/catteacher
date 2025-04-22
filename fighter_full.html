@@ -1,48 +1,718 @@
+// --- Basic Setup ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const SCREEN_WIDTH = canvas.width;
+const SCREEN_HEIGHT = canvas.height;
 
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>三角鐵 vs 飛碟魔王</title>
-  <style>
-    body { margin: 0; background: #000; color: white; font-family: sans-serif; text-align: center; }
-    canvas { display: block; margin: auto; background: #000; border: 2px solid white; }
-    .mobile-controls {
-      position: fixed;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 10px;
+// Colors (use CSS color strings)
+const WHITE = 'white';
+const BLACK = 'black';
+const RED = 'red';
+const GREEN = 'lime'; // Using 'lime' for brighter green
+const BLUE = 'blue';
+const YELLOW = 'yellow';
+const CYAN = 'cyan';
+const MAGENTA = 'magenta';
+const ORANGE = 'orange';
+
+// Game Parameters
+const FPS = 60;
+const GAME_DURATION = 60; // seconds
+const PLAYER_HP = 10;
+const BULLET_DAMAGE = 0.1;
+const MISSILE_DAMAGE = 3; // Placeholder
+const BOSS_HP = 50; // Placeholder
+const POWERUP_TYPES = ['M', 'S', 'D', 'H', 'L', 'B']; // Placeholder
+
+// --- Game State ---
+let score = 0;
+let gameStartTime = performance.now();
+let timeRemaining = GAME_DURATION;
+let isGameOver = false;
+let animationFrameId;
+let lastTime = 0;
+let keysPressed = {}; // To track held keys
+
+// --- Game Object Arrays ---
+let player;
+let wingman = null; // Only one wingman allowed
+let playerBullets = [];
+let playerMissiles = []; // Placeholder
+let enemies = []; // Placeholder
+let enemyBullets = []; // Placeholder
+let enemyMissiles = []; // Placeholder
+let powerups = []; // Placeholder
+let boss = null; // Placeholder for single boss
+
+// --- Utility Functions ---
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// --- Class Definitions (Basic Placeholders - Needs details from googleshoot3.py) ---
+
+class GameObject {
+    constructor(x, y, width, height, color) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+        this.speedX = 0;
+        this.speedY = 0;
     }
-    .mobile-controls button {
-      font-size: 20px;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      background: white;
-      color: black;
-      font-weight: bold;
+
+    draw() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
     }
-  </style>
-</head>
-<body>
-  <h1>🚀 三角鐵 vs 飛碟魔王</h1>
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
-  <div class="mobile-controls">
-    <button onclick="move('left')">⬅️</button>
-    <button onclick="move('right')">➡️</button>
-    <button onclick="fire()">🔫 發射</button>
-    <button onclick="clearAll()">💥 大招</button>
-  </div>
-  <script>
-    // 小白正在導入：飛機移動、射擊、魔王、子機進化、輔具功能，敬請期待完整版！
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'white';
-    ctx.font = '24px sans-serif';
-    ctx.fillText('🚧 遊戲建構中... 稍後進入全戰鬥階段！', 200, 300);
-  </script>
-</body>
-</html>
+
+    update(dt) {
+        this.x += this.speedX * dt;
+        this.y += this.speedY * dt;
+    }
+
+    // Basic AABB collision detection
+    collidesWith(other) {
+        return this.x < other.x + other.width &&
+               this.x + this.width > other.x &&
+               this.y < other.y + other.height &&
+               this.y + this.height > other.y;
+    }
+}
+
+class Player extends GameObject {
+    constructor() {
+        super(SCREEN_WIDTH / 2 - 25, SCREEN_HEIGHT - 60, 40, 40, GREEN);
+        this.hp = PLAYER_HP;
+        this.speed = 300; // pixels per second
+        this.shootDelay = 150; // ms
+        this.lastShotTime = 0;
+        this.missileDelay = 1000; // ms
+        this.lastMissileTime = 0;
+        this.hasDrone = false;
+        this.score = 0;
+        this.b_collected = 0; // Phoenix powerup count
+        this.on_cooldown = false; // Placeholder for phoenix cooldown
+        this.cooldownTimer = 0;
+    }
+
+    update(dt) {
+        // Movement based on keysPressed
+        this.speedX = 0;
+        this.speedY = 0;
+        if (keysPressed['ArrowLeft'] || keysPressed['a']) this.speedX = -this.speed;
+        if (keysPressed['ArrowRight'] || keysPressed['d']) this.speedX = this.speed;
+        if (keysPressed['ArrowUp'] || keysPressed['w']) this.speedY = -this.speed;
+        if (keysPressed['ArrowDown'] || keysPressed['s']) this.speedY = this.speed;
+
+        super.update(dt); // Apply movement
+
+        // Keep player within bounds
+        this.x = Math.max(0, Math.min(SCREEN_WIDTH - this.width, this.x));
+        this.y = Math.max(0, Math.min(SCREEN_HEIGHT - this.height, this.y));
+
+        // Shooting (Space key)
+        if (keysPressed[' '] && performance.now() - this.lastShotTime > this.shootDelay) {
+            this.shoot();
+            this.lastShotTime = performance.now();
+        }
+        // Missile (M key - example)
+        if (keysPressed['m'] && performance.now() - this.lastMissileTime > this.missileDelay) {
+            this.launchMissile();
+            this.lastMissileTime = performance.now();
+        }
+
+         // Update cooldown timer if active
+         if (this.on_cooldown) {
+            this.cooldownTimer -= dt * 1000; // dt is in seconds, timer in ms
+            if (this.cooldownTimer <= 0) {
+                this.on_cooldown = false;
+            }
+        }
+    }
+
+    shoot() {
+        // Create a bullet originating from the player
+        const bullet = new Bullet(this.x + this.width / 2 - 2.5, this.y, 5, 10, YELLOW);
+        bullet.speedY = -400; // pixels per second
+        playerBullets.push(bullet);
+    }
+
+    launchMissile() {
+        console.log("Launching Missile (placeholder)");
+        // Add Missile creation logic here
+        // const missile = new Missile(this.x + this.width / 2 - 5, this.y);
+        // playerMissiles.push(missile);
+    }
+
+    applyPowerup(type) {
+        console.log("Applying powerup:", type);
+        if (type === 'H') {
+            this.hp = Math.min(PLAYER_HP, this.hp + 2); // Example: Heal
+            console.log("HP Increased!");
+        } else if (type === 'S') {
+            this.shootDelay = Math.max(50, this.shootDelay - 20); // Increase fire rate
+             console.log("Fire Rate Increased!");
+        } else if (type === 'D') {
+            if (!this.hasDrone) {
+                this.hasDrone = true;
+                console.log("Drone Deployed!");
+                wingman = new Wingman(this); // Create and assign the wingman
+            }
+        } else if (type === 'B') {
+            this.b_collected = Math.min(3, this.b_collected + 1);
+            console.log("Phoenix Part Collected!");
+            if (this.b_collected === 3) {
+                 this.activatePhoenix();
+            }
+        }
+        // Add other powerup types (M, L)
+    }
+
+     activatePhoenix() {
+        console.log("PHOENIX ACTIVE!");
+        // Implement Phoenix effect: clear enemies, temp invulnerability, etc.
+        enemies = []; // Simple clear screen example
+        enemyBullets = [];
+        enemyMissiles = [];
+        this.b_collected = 0; // Reset count
+        this.on_cooldown = true;
+        this.cooldownTimer = 5000; // 5 second cooldown representation
+    }
+
+    takeDamage(amount) {
+        // Add invincibility frames if needed
+        this.hp -= amount;
+        if (this.hp <= 0) {
+            this.hp = 0;
+            gameOver(); // Trigger game over
+        }
+    }
+
+    draw() {
+        super.draw(); // Draw the basic rectangle
+        // Could add more details like a cockpit shape if desired
+    }
+}
+
+class Bullet extends GameObject {
+    constructor(x, y, width, height, color) {
+        super(x, y, width, height, color);
+        this.damage = BULLET_DAMAGE; // Use constant
+    }
+
+    update(dt) {
+        super.update(dt);
+        // Remove bullet if it goes off-screen
+        if (this.y < 0 || this.y > SCREEN_HEIGHT) {
+           this.shouldRemove = true;
+        }
+    }
+}
+
+// --- Wingman Class (Translated from Python) ---
+class Wingman { // Note: Not extending GameObject directly to use text rendering easily
+    constructor(player) {
+        this.player = player;
+        this.width = 20; // Estimated width/height for collision/positioning
+        this.height = 20;
+        this.x = player.x - 30; // Initial position relative to player
+        this.y = player.y - 30;
+        this.hp = 4;
+        this.lastShotTime = performance.now();
+        this.shootDelay = 400; // ms
+        this.color = CYAN;
+        this.font = "bold 20px Arial"; // Font for rendering 'D'
+    }
+
+    update(dt) {
+        // Follow the player with an offset
+        this.x = this.player.x - 30;
+        this.y = this.player.y - 30;
+
+        // Automatic shooting
+        const now = performance.now();
+        if (now - this.lastShotTime > this.shootDelay) {
+            this.lastShotTime = now;
+            // Create a bullet originating from the wingman
+            const bullet = new Bullet(this.x + this.width, this.y + this.height / 2 - 5, 5, 10, this.color); // Adjust origin
+            bullet.speedY = -350; // Slightly different speed?
+            playerBullets.push(bullet);
+        }
+
+        // Check collision with enemy bullets/missiles (needs enemy bullet/missile arrays)
+        enemyBullets.forEach((bullet, index) => {
+             if (this.collidesWith(bullet)) { // Use AABB collision
+                this.hp -= bullet.damage;
+                bullet.shouldRemove = true; // Mark bullet for removal
+            }
+        });
+         enemyMissiles.forEach((missile, index) => { // Placeholder
+            if (this.collidesWith(missile)) {
+                this.hp -= missile.damage; // Assuming missile has damage prop
+                missile.shouldRemove = true;
+            }
+        });
+
+
+        // Check if destroyed
+        if (this.hp <= 0) {
+            this.player.has_drone = false; // Update player state
+            wingman = null; // Remove the wingman from the game
+            console.log("Drone Destroyed!");
+        }
+    }
+
+    draw() {
+        ctx.font = this.font;
+        ctx.fillStyle = this.color;
+        ctx.textAlign = "center"; // Center the text horizontally
+        ctx.textBaseline = "middle"; // Center the text vertically
+        ctx.fillText("D", this.x + this.width / 2, this.y + this.height / 2);
+
+        // Optional: Draw HP bar for wingman
+        if (this.hp > 0) {
+            const hpBarWidth = this.width * (this.hp / 4); // Max HP = 4
+            ctx.fillStyle = RED;
+            ctx.fillRect(this.x, this.y - 10, this.width, 5);
+            ctx.fillStyle = GREEN;
+            ctx.fillRect(this.x, this.y - 10, hpBarWidth, 5);
+        }
+    }
+
+     // AABB collision check for the wingman (needed because it doesn't inherit GameObject directly)
+    collidesWith(other) {
+        return this.x < other.x + other.width &&
+               this.x + this.width > other.x &&
+               this.y < other.y + other.height &&
+               this.y + this.height > other.y;
+    }
+}
+
+// --- Enemy Classes (Placeholders - Add movement, shooting AI) ---
+class EnemySmall extends GameObject {
+    constructor(x, y) {
+        super(x, y, 30, 30, RED);
+        this.hp = 1;
+        this.speedY = 100; // Move downwards
+        this.scoreValue = 10;
+    }
+     update(dt) {
+        super.update(dt);
+        if (this.y > SCREEN_HEIGHT) {
+            this.shouldRemove = true; // Remove if off bottom screen
+        }
+        // Add basic shooting logic here later
+    }
+}
+class EnemyMedium extends GameObject {
+     constructor(x, y) {
+        super(x, y, 45, 40, MAGENTA);
+        this.hp = 3;
+        this.speedY = 70;
+        this.scoreValue = 30;
+         // Add zig-zag or other movement?
+        this.baseX = x;
+        this.moveTimer = 0;
+        this.moveDirection = 1;
+    }
+      update(dt) {
+        super.update(dt);
+        this.moveTimer += dt;
+        this.x = this.baseX + Math.sin(this.moveTimer * 2) * 50; // Simple sine wave movement
+
+        if (this.y > SCREEN_HEIGHT) {
+            this.shouldRemove = true;
+        }
+         // Add shooting logic
+    }
+}
+class Boss extends GameObject {
+     constructor() {
+        super(SCREEN_WIDTH/2 - 50, 10, 100, 80, ORANGE);
+        this.hp = BOSS_HP;
+        this.speedX = 100;
+        this.scoreValue = 500;
+        // More complex AI, multiple attack patterns needed
+    }
+
+    update(dt) {
+        super.update(dt);
+         // Basic side-to-side movement
+        this.x += this.speedX * dt;
+        if (this.x <= 0 || this.x + this.width >= SCREEN_WIDTH) {
+            this.speedX *= -1; // Reverse direction at edges
+        }
+        // Add complex shooting patterns here
+    }
+
+    draw() {
+         super.draw();
+         // Draw Boss HP Bar
+        const hpBarWidth = SCREEN_WIDTH * 0.8;
+        const currentHpWidth = hpBarWidth * (this.hp / BOSS_HP);
+        const barX = SCREEN_WIDTH * 0.1;
+        const barY = 10;
+
+        ctx.fillStyle = RED;
+        ctx.fillRect(barX, barY, hpBarWidth, 15);
+        ctx.fillStyle = GREEN;
+        ctx.fillRect(barX, barY, currentHpWidth, 15);
+        ctx.strokeStyle = WHITE;
+        ctx.strokeRect(barX, barY, hpBarWidth, 15);
+        ctx.fillStyle = WHITE;
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`BOSS HP: ${Math.ceil(this.hp)}`, SCREEN_WIDTH / 2, barY + 12);
+    }
+}
+
+
+// --- Powerup Class (Placeholder) ---
+class Powerup extends GameObject {
+    constructor(x, y, type) {
+        let color = WHITE; // Default
+        if (type === 'H') color = GREEN;
+        else if (type === 'S') color = YELLOW;
+        else if (type === 'D') color = CYAN;
+        else if (type === 'B') color = ORANGE; // Phoenix part
+        // Add colors for M, L
+
+        super(x, y, 20, 20, color);
+        this.type = type;
+        this.speedY = 80; // Move downwards
+        this.font = "bold 16px Arial";
+    }
+
+    update(dt) {
+        super.update(dt);
+        if (this.y > SCREEN_HEIGHT) {
+            this.shouldRemove = true;
+        }
+    }
+
+    draw() {
+        // Draw background color square
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        // Draw the letter type on top
+        ctx.font = this.font;
+        ctx.fillStyle = BLACK; // Text color
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.type, this.x + this.width / 2, this.y + this.height / 2 + 1); // Slight offset adjustment
+    }
+}
+
+// --- Spawning Logic ---
+let lastEnemySpawnTime = 0;
+let enemySpawnInterval = 1000; // ms
+let lastPowerupSpawnTime = 0;
+let powerupSpawnInterval = 8000; // ms
+let bossSpawnTime = GAME_DURATION / 2 * 1000; // Spawn boss halfway through (example)
+let bossSpawned = false;
+
+function spawnEnemy() {
+    const edgeMargin = 30;
+    const x = getRandomInt(edgeMargin, SCREEN_WIDTH - edgeMargin);
+    const y = -30; // Start just above the screen
+    let enemy;
+    if (Math.random() < 0.7) { // 70% chance for small enemy
+        enemy = new EnemySmall(x, y);
+    } else {
+        enemy = new EnemyMedium(x, y);
+    }
+    enemies.push(enemy);
+}
+
+function spawnPowerup() {
+     const x = getRandomInt(50, SCREEN_WIDTH - 50);
+     const y = -20;
+     const type = POWERUP_TYPES[getRandomInt(0, POWERUP_TYPES.length - 1)];
+     powerups.push(new Powerup(x, y, type));
+}
+
+function spawnBoss() {
+    if (!boss && !bossSpawned) {
+         boss = new Boss();
+         bossSpawned = true;
+         console.log("BOSS SPAWNED!");
+    }
+}
+
+// --- Collision Detection & Handling ---
+function handleCollisions() {
+    // 1. Player Bullets vs Enemies
+    playerBullets.forEach((bullet) => {
+        enemies.forEach((enemy) => {
+            if (!bullet.shouldRemove && !enemy.shouldRemove && bullet.collidesWith(enemy)) {
+                enemy.hp -= bullet.damage;
+                bullet.shouldRemove = true; // Remove bullet on hit
+                if (enemy.hp <= 0) {
+                    enemy.shouldRemove = true;
+                    player.score += enemy.scoreValue;
+                    // Chance to drop powerup on enemy death
+                    if (Math.random() < 0.1) { // 10% chance
+                         powerups.push(new Powerup(enemy.x, enemy.y, POWERUP_TYPES[getRandomInt(0, POWERUP_TYPES.length - 1)]));
+                    }
+                }
+            }
+        });
+        // Player Bullets vs Boss
+        if (boss && !bullet.shouldRemove && bullet.collidesWith(boss)) {
+             boss.hp -= bullet.damage;
+             bullet.shouldRemove = true;
+             if (boss.hp <= 0) {
+                player.score += boss.scoreValue;
+                boss = null; // Defeated
+                 console.log("BOSS DEFEATED!");
+                // Maybe trigger win condition or next stage?
+            }
+        }
+    });
+
+    // 2. Enemy Bullets vs Player
+    enemyBullets.forEach((bullet) => {
+        if (!bullet.shouldRemove && player.collidesWith(bullet)) {
+            bullet.shouldRemove = true;
+            player.takeDamage(bullet.damage); // Assume enemy bullet has damage
+        }
+    });
+
+    // 3. Player vs Enemies (Collision Damage)
+    enemies.forEach((enemy) => {
+        if (!enemy.shouldRemove && player.collidesWith(enemy)) {
+            enemy.shouldRemove = true; // Enemy is destroyed on collision
+            player.takeDamage(1); // Example damage amount
+             player.score += enemy.scoreValue; // Score for ramming? Optional.
+        }
+    });
+
+     // 4. Player vs Boss (Collision Damage)
+     if (boss && player.collidesWith(boss)) {
+         player.takeDamage(5); // High damage for boss collision
+         // Maybe push player back? Add invincibility frames?
+     }
+
+
+    // 5. Player vs Powerups
+    powerups.forEach((powerup) => {
+        if (!powerup.shouldRemove && player.collidesWith(powerup)) {
+            powerup.shouldRemove = true;
+            player.applyPowerup(powerup.type);
+        }
+    });
+
+    // Wingman collisions are handled within the Wingman update method
+
+    // --- Cleanup Removed Objects ---
+    // Filter arrays to keep only objects that should NOT be removed
+    playerBullets = playerBullets.filter(b => !b.shouldRemove);
+    enemies = enemies.filter(e => !e.shouldRemove);
+    enemyBullets = enemyBullets.filter(eb => !eb.shouldRemove);
+    powerups = powerups.filter(p => !p.shouldRemove);
+    // No need to filter wingman here, it's handled directly
+}
+
+
+// --- Input Handling ---
+window.addEventListener('keydown', (e) => {
+    keysPressed[e.key] = true;
+     // Prevent default browser behavior for space and arrow keys
+    if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    keysPressed[e.key] = false;
+});
+
+// --- Drawing Functions ---
+function drawHUD() {
+    ctx.fillStyle = WHITE;
+    ctx.font = "20px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    ctx.fillStyle = GREEN;
+    ctx.fillText(`HP: ${Math.ceil(player.hp)}/${PLAYER_HP}`, 10, 10); // Use Math.ceil for display
+
+    ctx.fillStyle = WHITE;
+    ctx.fillText(`Time: ${Math.ceil(timeRemaining)}`, 10, 40);
+
+    ctx.fillStyle = YELLOW;
+    ctx.fillText(`Score: ${player.score}`, 10, 70);
+
+    ctx.fillStyle = ORANGE;
+    ctx.fillText(`Phoenix: ${player.b_collected}/3`, 10, 100);
+
+    // Display cooldown message
+    if (player.on_cooldown) {
+        ctx.fillStyle = RED;
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`Cooldown: ${Math.ceil(player.cooldownTimer / 1000)}s`, player.x + player.width / 2, player.y - 25);
+    }
+}
+
+function drawGameOver() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; // Semi-transparent black overlay
+    ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    ctx.fillStyle = RED;
+    ctx.font = "60px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("GAME OVER", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 40);
+
+    ctx.fillStyle = WHITE;
+    ctx.font = "30px Arial";
+    ctx.fillText(`Final Score: ${player.score}`, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
+
+     ctx.font = "20px Arial";
+     ctx.fillText("Press Enter to Restart", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 70);
+}
+
+
+// --- Game Loop ---
+function gameLoop(currentTime) {
+    if (isGameOver) {
+        // Handle restart logic if needed (e.g., listen for 'Enter' key)
+         if (keysPressed['Enter']) {
+            restartGame();
+        }
+        // Keep requesting frames to check for restart input
+        animationFrameId = requestAnimationFrame(gameLoop);
+        return; // Don't run game logic if game over
+    }
+
+    // Calculate delta time (time elapsed since the last frame)
+    const dt = (currentTime - lastTime) / 1000; // Convert ms to seconds
+    lastTime = currentTime;
+
+    // --- Update Game State ---
+    const elapsedTime = (currentTime - gameStartTime) / 1000;
+    timeRemaining = Math.max(0, GAME_DURATION - elapsedTime);
+
+    // Spawning logic
+    if (currentTime - lastEnemySpawnTime > enemySpawnInterval && !boss) { // Don't spawn normal enemies if boss is active
+        spawnEnemy();
+        lastEnemySpawnTime = currentTime;
+    }
+     if (currentTime - lastPowerupSpawnTime > powerupSpawnInterval) {
+        spawnPowerup();
+        lastPowerupSpawnTime = currentTime;
+    }
+    // Spawn boss at specific time
+    if (!bossSpawned && elapsedTime * 1000 >= bossSpawnTime) {
+        spawnBoss();
+    }
+
+
+    // --- Update Game Objects ---
+    player.update(dt);
+    if (wingman) wingman.update(dt);
+    playerBullets.forEach(b => b.update(dt));
+    enemies.forEach(e => e.update(dt));
+    enemyBullets.forEach(eb => eb.update(dt)); // Needs enemy shooting logic first
+    powerups.forEach(p => p.update(dt));
+    if (boss) boss.update(dt);
+
+
+    // --- Handle Collisions ---
+    handleCollisions();
+
+    // --- Drawing ---
+    // Clear canvas
+    ctx.fillStyle = BLACK;
+    ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    // Draw game objects
+    player.draw();
+    if (wingman) wingman.draw();
+    playerBullets.forEach(b => b.draw());
+    enemies.forEach(e => e.draw());
+    enemyBullets.forEach(eb => eb.draw()); // Needs enemy shooting logic first
+    powerups.forEach(p => p.draw());
+     if (boss) boss.draw();
+
+
+    // Draw HUD
+    drawHUD();
+
+    // Check Game Over Conditions
+    if (timeRemaining <= 0 && !isGameOver) {
+       console.log("Time's Up!");
+       gameOver(); // Trigger game over when time runs out
+    }
+
+    // Request next frame
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// --- Game Control ---
+function gameOver() {
+    if (isGameOver) return; // Prevent calling multiple times
+    isGameOver = true;
+    console.log("Game Over!");
+     // Optional: Stop enemy spawning or other activities immediately
+    if (wingman) {
+        // Maybe keep wingman visually but stop updates/shooting? Or just remove it.
+        // wingman = null; // Or leave it for the game over screen
+    }
+     drawGameOver(); // Draw the game over screen immediately
+     // No cancelAnimationFrame here, loop continues to check for restart
+}
+
+function restartGame() {
+    console.log("Restarting game...");
+    // Reset all game state variables
+    score = 0;
+    gameStartTime = performance.now();
+    timeRemaining = GAME_DURATION;
+    isGameOver = false;
+    keysPressed = {};
+    lastTime = performance.now(); // Reset lastTime for dt calculation
+
+    // Clear all game object arrays
+    playerBullets = [];
+    playerMissiles = [];
+    enemies = [];
+    enemyBullets = [];
+    enemyMissiles = [];
+    powerups = [];
+
+    // Reset player and wingman
+    player = new Player(); // Create a new player instance
+    wingman = null; // Remove existing wingman
+    player.has_drone = false; // Ensure player knows it has no drone
+
+    // Reset Boss state
+    boss = null;
+    bossSpawned = false;
+
+
+    // Reset spawner timers
+    lastEnemySpawnTime = 0;
+    lastPowerupSpawnTime = 0;
+
+    // Cancel previous frame request if any (though it should stop in the loop)
+    // cancelAnimationFrame(animationFrameId); // Maybe not needed if loop handles isGameOver
+
+    // Start the game loop again
+    requestAnimationFrame(gameLoop);
+}
+
+
+// --- Initialization ---
+function init() {
+    player = new Player();
+    lastTime = performance.now(); // Initialize lastTime
+    gameStartTime = performance.now(); // Initialize game start time
+    requestAnimationFrame(gameLoop); // Start the game loop
+}
+
+// Start the game when the script loads
+init();
