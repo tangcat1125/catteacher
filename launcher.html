@@ -25,18 +25,46 @@
       color: #333;
       font-size: 1.8em;
     }
-    label, select, input[type=text], textarea {
+    label, select, input[type=text], textarea, fieldset { /* Add fieldset */
       display: block;
       width: 100%;
       margin: 10px 0;
       font-size: 1em;
       box-sizing: border-box;
     }
-    input, select, textarea {
+    input[type=text], select, textarea {
       padding: 8px;
       border: 1px solid #ccc;
       border-radius: 5px;
+       width: 100%; /* Ensure consistent width */
+       box-sizing: border-box; /* Ensure padding doesn't add to width */
     }
+    /* Style for checkboxes */
+    .checkbox-group label {
+        display: inline-block; /* Display labels next to checkboxes */
+        width: auto; /* Override block width for checkbox labels */
+        margin-right: 15px; /* Space between checkboxes */
+        margin-bottom: 5px;
+        font-weight: normal; /* Less prominent than main labels */
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: auto; /* Override block width */
+        margin-right: 5px;
+        vertical-align: middle; /* Align checkbox with text */
+    }
+    fieldset {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 15px; /* Space below fieldsets */
+    }
+    legend {
+        font-weight: bold;
+        padding: 0 5px;
+        color: #333;
+    }
+    /* --- End checkbox styles --- */
+
     .btn, .ai-btn {
       margin-top: 15px;
       background-color: #2c74d6;
@@ -82,6 +110,10 @@
       .btn, .ai-btn {
         font-size: 1em;
       }
+      .checkbox-group label {
+        display: block; /* Stack checkboxes on small screens */
+        margin-right: 0;
+      }
     }
   </style>
 </head>
@@ -90,11 +122,9 @@
     <h1>教案精靈指令產生器</h1>
     <img src="images/white_cat_ai_studio_h300_equal.png" class="studio-img" alt="白貓AI工作室">
 
-    <!-- 新增：學校 -->
     <label>學校：</label>
     <input type="text" id="school">
 
-    <!-- 新增：教案設計人姓名 -->
     <label>教案設計人姓名：</label>
     <input type="text" id="designerName">
 
@@ -109,6 +139,9 @@
       <option>國小六年級</option>
       <option>國中七年級</option>
       <option>國中八年級</option>
+      <option>高中一年級</option> <!-- Add more if needed -->
+      <option>高中二年級</option>
+      <option>高中三年級</option>
     </select>
 
     <label>科目：</label>
@@ -118,16 +151,74 @@
       <option>自然</option>
       <option>數學</option>
       <option>綜合活動</option>
+      <option>生活課程</option>
+      <option>健康與體育</option>
+      <option>藝術</option>
+      <option>科技</option>
+      <!-- Add more subjects if needed -->
     </select>
 
+    <!-- 新增：SDGs 指標選項 -->
+    <fieldset>
+        <legend>選擇相關的SDGs指標 (可複選)</legend>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
+            <label><input type="checkbox" name="sdg" value="SDG2 消除飢餓"> SDG2 消除飢餓</label>
+            <label><input type="checkbox" name="sdg" value="SDG3 健康與福祉"> SDG3 健康與福祉</label>
+            <label><input type="checkbox" name="sdg" value="SDG4 優質教育"> SDG4 優質教育</label>
+            <label><input type="checkbox" name="sdg" value="SDG5 性別平等"> SDG5 性別平等</label>
+            <label><input type="checkbox" name="sdg" value="SDG6 潔淨水與衛生"> SDG6 潔淨水與衛生</label>
+            <label><input type="checkbox" name="sdg" value="SDG7 可負擔能源"> SDG7 可負擔能源</label>
+            <label><input type="checkbox" name="sdg" value="SDG8 就業與經濟成長"> SDG8 就業與經濟成長</label>
+            <label><input type="checkbox" name="sdg" value="SDG9 工業、創新與基礎建設"> SDG9 工業、創新與基礎建設</label>
+            <label><input type="checkbox" name="sdg" value="SDG10 減少不平等"> SDG10 減少不平等</label>
+            <label><input type="checkbox" name="sdg" value="SDG11 永續城市與社區"> SDG11 永續城市與社區</label>
+            <label><input type="checkbox" name="sdg" value="SDG12 責任消費與生產"> SDG12 責任消費與生產</label>
+            <label><input type="checkbox" name="sdg" value="SDG13 氣候行動"> SDG13 氣候行動</label>
+            <label><input type="checkbox" name="sdg" value="SDG14 水下生命"> SDG14 水下生命</label>
+            <label><input type="checkbox" name="sdg" value="SDG15 陸地生命"> SDG15 陸地生命</label>
+            <label><input type="checkbox" name="sdg" value="SDG16 和平、正義與制度"> SDG16 和平、正義與制度</label>
+            <label><input type="checkbox" name="sdg" value="SDG17 夥伴關係"> SDG17 夥伴關係</label>
+        </div>
+    </fieldset>
+
+    <!-- 新增：核心素養選項 (三面九向) -->
+     <fieldset>
+        <legend>選擇相關的核心素養項目 (三面九向, 可複選)</legend>
+        <fieldset>
+            <legend>A 自主行動</legend>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="competency" value="A1 身心素質與自我精進"> A1 身心素質與自我精進</label>
+                <label><input type="checkbox" name="competency" value="A2 系統思考與解決問題"> A2 系統思考與解決問題</label>
+                <label><input type="checkbox" name="competency" value="A3 規劃執行與創新應變"> A3 規劃執行與創新應變</label>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>B 溝通互動</legend>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="competency" value="B1 符號運用與溝通表達"> B1 符號運用與溝通表達</label>
+                <label><input type="checkbox" name="competency" value="B2 科技資訊與媒體素養"> B2 科技資訊與媒體素養</label>
+                <label><input type="checkbox" name="competency" value="B3 藝術涵養與美感素養"> B3 藝術涵養與美感素養</label>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>C 社會參與</legend>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="competency" value="C1 道德實踐與公民意識"> C1 道德實踐與公民意識</label>
+                <label><input type="checkbox" name="competency" value="C2 人際關係與團隊合作"> C2 人際關係與團隊合作</label>
+                <label><input type="checkbox" name="competency" value="C3 多元文化與國際理解"> C3 多元文化與國際理解</label>
+            </div>
+        </fieldset>
+    </fieldset>
+
     <label>教學目標（建議三項）：</label>
-    <input type="text" id="goal1">
-    <input type="text" id="goal2">
-    <input type="text" id="goal3">
+    <input type="text" id="goal1" placeholder="教學目標 1">
+    <input type="text" id="goal2" placeholder="教學目標 2">
+    <input type="text" id="goal3" placeholder="教學目標 3">
 
     <button class="btn" onclick="generatePrompt()">✨ 產生教案指令</button>
 
-    <textarea id="output" rows="10" readonly></textarea>
+    <textarea id="output" rows="15" readonly></textarea> <!-- Increased rows -->
     <button class="btn" onclick="copyPrompt()">📋 複製指令</button>
     <a class="ai-btn" href="https://chat.openai.com" target="_blank">🚀 開啟 ChatGPT 並貼上</a>
 
@@ -142,9 +233,9 @@
 
   <script>
     function generatePrompt() {
-      // 取得所有欄位的值
-      const school = document.getElementById("school").value; // 新增
-      const designerName = document.getElementById("designerName").value; // 新增
+      // 取得基本欄位的值
+      const school = document.getElementById("school").value;
+      const designerName = document.getElementById("designerName").value;
       const topic = document.getElementById("topic").value;
       const grade = document.getElementById("grade").value;
       const subject = document.getElementById("subject").value;
@@ -152,25 +243,87 @@
       const g2 = document.getElementById("goal2").value;
       const g3 = document.getElementById("goal3").value;
 
-      // 修正並組裝指令字串
+      // 取得選取的 SDGs
+      const selectedSdgs = [];
+      const sdgCheckboxes = document.querySelectorAll('input[name="sdg"]:checked');
+      sdgCheckboxes.forEach((checkbox) => {
+        selectedSdgs.push(checkbox.value);
+      });
+      const sdgsText = selectedSdgs.length > 0 ? `連結的SDGs指標：${selectedSdgs.join('、')}\n` : ''; // 如果有選才加入
+
+      // 取得選取的核心素養
+      const selectedCompetencies = [];
+      const competencyCheckboxes = document.querySelectorAll('input[name="competency"]:checked');
+      competencyCheckboxes.forEach((checkbox) => {
+        selectedCompetencies.push(checkbox.value);
+      });
+      const competenciesText = selectedCompetencies.length > 0 ? `欲培養的核心素養：${selectedCompetencies.join('、')}\n` : ''; // 如果有選才加入
+
+
+      // 組裝指令字串
       const text = `請幫我根據以下條件設計一份教案：\n` +
-        `學校：${school}\n` +                  // 新增
-        `教案設計人：${designerName}\n` +      // 新增
+        `學校：${school}\n` +
+        `教案設計人：${designerName}\n` +
         `教學主題：${topic}\n` +
         `年級：${grade}\n` +
         `科目：${subject}\n` +
-        `教學目標：\n1. ${g1}\n2. ${g2}\n3. ${g3}\n` + // 修正：加上換行
-        `教案格式橫式表格主題分別為：教學序號、教學活動（教師教學流程編號說明）、學生活動（學生執行流程編號說明）、四學（自學、互學、導學、共學，採打勾制佐證這時間在做什麼概念）時間（分）、評量方式\n` + // 修正：加上換行
-        `學生自評：請依據教學教案內容設計學生正向評鑑同學的三個指標，並以表格分列出五☆的給分標準。學生自評表設計成讓學生可以自己塗黑星星（☆）的格式，用於評鑑同學的表現。以橫式表格標注評鑑主題、給星評鑑，最後並在表格結束時加上一格評分人簽名，以及給同學鼓勵的話`; // 修正：確保字串連接正確
+        sdgsText +                 // 加入選取的 SDGs
+        competenciesText +         // 加入選取的核心素養
+        `教學目標：\n` +
+        (g1 ? `1. ${g1}\n` : '') + // 如果有填才加入
+        (g2 ? `2. ${g2}\n` : '') + // 如果有填才加入
+        (g3 ? `3. ${g3}\n` : '') + // 如果有填才加入
+        `\n` + // 加個空行區隔
+        `教案格式請使用橫式表格，包含以下欄位：\n` +
+        `1. 教學活動流程（包含引起動機、發展活動、綜合活動）\n` +
+        `2. 學生活動與互動方式（說明學生需進行的活動、討論或操作）\n` +
+        `3. 四學應用（標註活動主要涉及的學習方式：自學、互學、導學、共學）\n` +
+        `4. 教學資源（使用的教具、媒材、數位工具等）\n` +
+        `5. 時間分配（分鐘）\n` +
+        `6. 評量方式（口語評量、實作評量、學習單、提問、觀察記錄等）\n` +
+        `7. 對應核心素養（標註活動主要對應前面選擇的哪些核心素養項目）\n`+ // 新增: 對應核心素養欄位
+        `\n` + // 加個空行區隔
+        `學生自評表：\n` +
+        `請另外設計一份學生自評表，讓學生可以針對「學習參與度」、「合作分享」、「表達清晰度」這三個指標進行自我評鑑。\n`+
+        `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`+
+        `最後請加上「給自己的鼓勵」和「簽名」欄位。`;
 
-      document.getElementById("output").value = text;
+
+      document.getElementById("output").value = text.trim(); // 使用 trim() 移除結尾可能多餘的換行
     }
 
     function copyPrompt() {
       const output = document.getElementById("output");
+      if (output.value === "") {
+          alert("請先產生指令！");
+          return;
+      }
       output.select();
-      document.execCommand("copy");
-      alert("已複製教案指令到剪貼簿！");
+      // 使用新的 Clipboard API (如果瀏覽器支持) 或舊的 execCommand
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(output.value).then(() => {
+              alert("已複製教案指令到剪貼簿！");
+          }).catch(err => {
+              console.error('無法複製到剪貼簿: ', err);
+              // Fallback to execCommand if clipboard API fails
+              try {
+                  output.select();
+                  document.execCommand('copy');
+                  alert("已複製教案指令到剪貼簿！(fallback)");
+              } catch (e) {
+                  alert("複製失敗，請手動複製。");
+              }
+          });
+      } else {
+          // Fallback for older browsers
+           try {
+              output.select();
+              document.execCommand('copy');
+              alert("已複製教案指令到剪貼簿！(execCommand)");
+          } catch (e) {
+              alert("複製失敗，請手動複製。");
+          }
+      }
     }
   </script>
 </body>
