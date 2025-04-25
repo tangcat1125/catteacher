@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cat Plane Shooter</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(to right, skyblue, white);
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="900" height="500"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const keys = {};
+
+    // Game objects
+    const player = {
+      x: 100,
+      y: 250,
+      width: 60,
+      height: 40,
+      hp: 11,
+      shield: false,
+      shieldTime: 0,
+      color: "blue"
+    };
+
+    const bullets = [];
+    const enemyBullets = [];
+    const enemies = [];
+    let boss = null;
+    let bossHP = 50;
+    let bossInvincible = false;
+    let bossFrenzyTime = 0;
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      if (player.shield) {
+        ctx.strokeStyle = "cyan";
+        ctx.lineWidth = 5;
+        ctx.strokeRect(player.x - 5, player.y - 5, player.width + 10, player.height + 10);
+      }
+    }
+
+    function drawBullet(b) {
+      ctx.fillStyle = b.color;
+      ctx.fillRect(b.x, b.y, b.width, b.height);
+    }
+
+    function drawBoss() {
+      ctx.fillStyle = "purple";
+      ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+      ctx.fillStyle = "white";
+      ctx.fillText("BOSS HP: " + bossHP.toFixed(1), boss.x, boss.y - 10);
+    }
+
+    function spawnEnemy() {
+      enemies.push({ x: 900, y: Math.random() * 460, width: 30, height: 30, speed: 2 });
+    }
+
+    function fireBullet() {
+      bullets.push({ x: player.x + player.width, y: player.y + player.height / 2 - 5, width: 10, height: 10, speed: 6, color: "black" });
+    }
+
+    function toggleShield() {
+      if (!player.shield) {
+        player.shield = true;
+        player.shieldTime = 180; // 3 seconds
+      }
+    }
+
+    function update() {
+      if (keys["ArrowUp"]) player.y -= 5;
+      if (keys["ArrowDown"]) player.y += 5;
+      if (player.shield) player.shieldTime--;
+      if (player.shieldTime <= 0) player.shield = false;
+
+      bullets.forEach(b => b.x += b.speed);
+      bullets.filter(b => b.x < 900);
+
+      enemyBullets.forEach(b => b.x -= b.speed);
+
+      enemies.forEach(e => e.x -= e.speed);
+
+      if (boss) {
+        if (bossFrenzyTime > 0) {
+          bossFrenzyTime--;
+          if (bossFrenzyTime % 15 === 0) {
+            enemyBullets.push({
+              x: boss.x,
+              y: boss.y + Math.random() * boss.height,
+              width: 8,
+              height: 8,
+              speed: 4,
+              color: "red",
+              damage: 0.3
+            });
+          }
+        }
+      } else {
+        boss = { x: 800, y: 200, width: 80, height: 80 };
+      }
+
+      // Collision checks
+      bullets.forEach((b, i) => {
+        if (boss && b.x + b.width >= boss.x && b.y >= boss.y && b.y <= boss.y + boss.height) {
+          if (!bossInvincible) bossHP -= 1;
+          bullets.splice(i, 1);
+          if (bossHP <= 3 && !bossInvincible) {
+            bossInvincible = true;
+            bossFrenzyTime = 180; // 3 seconds
+            setTimeout(() => bossInvincible = false, 3000);
+          }
+        }
+      });
+
+      enemyBullets.forEach((b, i) => {
+        if (b.x < player.x + player.width && b.x + b.width > player.x &&
+            b.y < player.y + player.height && b.y + b.height > player.y) {
+          if (!player.shield) player.hp -= b.damage || 1.1;
+          enemyBullets.splice(i, 1);
+        }
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      bullets.forEach(drawBullet);
+      enemyBullets.forEach(drawBullet);
+      enemies.forEach(e => ctx.fillRect(e.x, e.y, e.width, e.height));
+      if (boss) drawBoss();
+
+      ctx.fillStyle = "black";
+      ctx.fillText("HP: " + player.hp.toFixed(1), 10, 20);
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      if (player.hp <= 0) {
+        alert("Game Over");
+        return;
+      }
+      if (bossHP <= 0) {
+        alert("Victory! Boss defeated.");
+        return;
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    setInterval(spawnEnemy, 3000);
+    document.addEventListener("keydown", e => {
+      keys[e.key] = true;
+      if (e.key === "z") fireBullet();
+      if (e.key === "x") toggleShield();
+    });
+    document.addEventListener("keyup", e => keys[e.key] = false);
+
+    gameLoop();
+  </script>
+</body>
+</html>
