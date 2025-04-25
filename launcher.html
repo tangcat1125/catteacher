@@ -8,112 +8,179 @@
     html, body {
       margin: 0;
       padding: 0;
-      font-family: "Microsoft JhengHei", sans-serif;
+      font-family: "Microsoft JhengHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Added fallback fonts */
       background: #f5f5f5;
+      line-height: 1.6; /* Improved readability */
     }
     .container {
       max-width: 800px;
-      margin: auto;
+      margin: 20px auto; /* Added top/bottom margin */
       background: white;
-      padding: 20px;
+      padding: 25px; /* Slightly more padding */
       border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1); /* Slightly adjusted shadow */
       box-sizing: border-box;
     }
     h1 {
       text-align: center;
       color: #333;
       font-size: 1.8em;
+      margin-bottom: 20px; /* Space below heading */
     }
-    label, select, input[type=text], textarea, fieldset { /* Add fieldset */
+    /* Combined rule for block elements */
+    label, select, input[type=text], input[type=number], textarea, fieldset {
       display: block;
       width: 100%;
-      margin: 10px 0;
+      margin-top: 15px; /* Consistent top margin */
+      margin-bottom: 5px; /* Space between label and input */
       font-size: 1em;
+      font-weight: bold; /* Make labels stand out */
+      color: #555; /* Slightly softer label color */
       box-sizing: border-box;
     }
-    input[type=text], select, textarea {
-      padding: 8px;
+    /* Specific margin for top-level elements if needed */
+    label:first-of-type {
+        margin-top: 0;
+    }
+
+    /* Combined rule for input/select/textarea styling */
+    input[type=text], input[type=number], select, textarea {
+      padding: 10px; /* Increased padding */
       border: 1px solid #ccc;
       border-radius: 5px;
-       width: 100%; /* Ensure consistent width */
-       box-sizing: border-box; /* Ensure padding doesn't add to width */
-       font-family: inherit; /* Inherit font */
+      width: 100%;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 1em; /* Ensure consistent font size */
+      margin-top: 0; /* Remove top margin for inputs following labels */
+      font-weight: normal; /* Normal weight for input text */
     }
+    textarea {
+        resize: vertical; /* Allow vertical resizing */
+    }
+    input:focus, select:focus, textarea:focus {
+        border-color: #2c74d6; /* Highlight on focus */
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(44, 116, 214, 0.2);
+    }
+
     /* Style for checkboxes */
+    .checkbox-group {
+        margin-top: 5px; /* Space above checkbox group */
+    }
     .checkbox-group label {
-        display: inline-block; /* Display labels next to checkboxes */
-        width: auto; /* Override block width for checkbox labels */
-        margin-right: 15px; /* Space between checkboxes */
-        margin-bottom: 5px;
-        font-weight: normal; /* Less prominent than main labels */
+        display: inline-block;
+        width: auto;
+        margin-right: 15px;
+        margin-bottom: 8px; /* Increased bottom margin */
+        font-weight: normal; /* Normal weight for checkbox labels */
+        color: #333; /* Standard text color */
+        cursor: pointer; /* Indicate clickable */
     }
     .checkbox-group input[type="checkbox"] {
-        width: auto; /* Override block width */
+        width: auto;
         margin-right: 5px;
-        vertical-align: middle; /* Align checkbox with text */
+        vertical-align: middle;
+        cursor: pointer; /* Indicate clickable */
     }
     fieldset {
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 15px; /* Space below fieldsets */
+        border: 1px solid #ddd; /* Lighter border */
+        border-radius: 8px; /* Slightly more rounded */
+        padding: 15px;
+        margin-top: 20px;
+        margin-bottom: 20px;
     }
     legend {
         font-weight: bold;
-        padding: 0 5px;
+        padding: 0 10px; /* More padding */
         color: #333;
+        font-size: 1.1em; /* Slightly larger legend */
+    }
+    fieldset fieldset { /* Nested fieldsets */
+        margin-top: 10px;
+        margin-bottom: 10px;
+        border-color: #eee; /* Even lighter border for nested */
+    }
+    fieldset fieldset legend {
+        font-size: 1em; /* Smaller legend for nested */
+        font-weight: normal;
+        color: #555;
     }
     /* --- End checkbox styles --- */
 
     .btn, .ai-btn {
-      margin-top: 15px;
+      margin-top: 20px; /* More space above buttons */
       background-color: #2c74d6;
       color: white;
       border: none;
-      padding: 10px;
+      padding: 12px 15px; /* Larger padding */
       cursor: pointer;
       border-radius: 5px;
-      font-size: 1em;
+      font-size: 1.1em; /* Slightly larger button text */
       width: 100%;
       box-sizing: border-box;
+      transition: background-color 0.2s ease; /* Smooth hover effect */
+      text-align: center; /* Ensure text is centered for <a> */
+      display: block; /* Ensure <a> takes full width */
+      text-decoration: none; /* Remove underline from <a> */
     }
     .btn:hover, .ai-btn:hover {
       background-color: #1e5fbf;
     }
     .ai-btn {
-      background-color: #28a745;
+      background-color: #28a745; /* Green for AI button */
     }
     .ai-btn:hover {
       background-color: #218838;
     }
     .footer {
       text-align: center;
-      margin-top: 20px;
+      margin-top: 30px; /* More space above footer */
+      font-size: 0.9em;
+      color: #777;
+    }
+    .footer p {
+        margin-bottom: 10px; /* Space between footer paragraphs */
+    }
+    .footer a {
+        color: #2c74d6; /* Consistent link color */
+        text-decoration: none;
+    }
+    .footer a:hover {
+        text-decoration: underline;
     }
     .paw {
-      width: 40px;
+      width: 35px; /* Slightly smaller paw */
       cursor: pointer;
+      vertical-align: middle; /* Align paw nicely */
+      margin: 0 5px; /* Space around paw */
     }
     .studio-img {
       display: block;
-      margin: 20px auto;
-      max-height: 120px;
+      margin: 0 auto 25px auto; /* Centered, more space below */
+      max-height: 100px; /* Adjusted height */
       width: auto;
     }
+    /* Responsive adjustments */
     @media screen and (max-width: 600px) {
       .container {
         padding: 15px;
+        margin: 10px; /* Adjust margin for small screens */
       }
       h1 {
-        font-size: 1.5em;
+        font-size: 1.6em;
       }
       .btn, .ai-btn {
         font-size: 1em;
+        padding: 10px 12px;
       }
       .checkbox-group label {
-        display: block; /* Stack checkboxes on small screens */
+        display: block; /* Stack checkboxes */
         margin-right: 0;
+        width: 100%; /* Take full width */
+      }
+      fieldset {
+        padding: 10px;
       }
     }
   </style>
@@ -123,45 +190,52 @@
     <h1>教案精靈指令產生器</h1>
     <img src="images/white_cat_ai_studio_h300_equal.png" class="studio-img" alt="白貓AI工作室">
 
-    <label>學校：</label>
+    <label for="school">學校：</label>
     <input type="text" id="school">
 
-    <label>教案設計人姓名：</label>
+    <label for="designerName">教案設計人姓名：</label>
     <input type="text" id="designerName">
 
-    <label>教學主題：</label>
+    <label for="topic">教學主題：</label>
     <input type="text" id="topic">
 
-    <label>年級：</label>
+    <label for="grade">年級：</label>
     <select id="grade">
-      <option>國小三年級</option>
+      <option>國小一年級</option>
+      <option>國小二年級</option>
+      <option selected>國小三年級</option> <!-- Default selection example -->
       <option>國小四年級</option>
       <option>國小五年級</option>
       <option>國小六年級</option>
       <option>國中七年級</option>
       <option>國中八年級</option>
+      <option>國中九年級</option>
       <option>高中一年級</option>
       <option>高中二年級</option>
       <option>高中三年級</option>
     </select>
 
-    <label>科目：</label>
+    <label for="subject">科目：</label>
     <select id="subject">
       <option>國語</option>
-      <option>社會</option>
-      <option>自然</option>
       <option>數學</option>
-      <option>綜合活動</option>
+      <option selected>自然</option> <!-- Default selection example -->
+      <option>社會</option>
       <option>生活課程</option>
+      <option>綜合活動</option>
       <option>健康與體育</option>
       <option>藝術</option>
       <option>科技</option>
+      <option>英語</option>
       <!-- Add more subjects if needed -->
     </select>
 
-      <!-- SDGs 指標選項 -->
+    <label for="periods">教學節數：</label>
+    <input type="number" id="periods" min="1" step="1" value="1" placeholder="請輸入正整數">
+
+    <!-- SDGs 指標選項 -->
     <fieldset>
-        <legend>選擇相關的SDGs指標 (可複選)</legend>
+        <legend>連結的SDGs指標 (可複選)</legend>
         <div class="checkbox-group">
             <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
             <label><input type="checkbox" name="sdg" value="SDG2 消除飢餓"> SDG2 消除飢餓</label>
@@ -185,7 +259,7 @@
 
     <!-- 核心素養選項 (三面九向) -->
      <fieldset>
-        <legend>選擇相關的核心素養項目 (三面九向, 可複選)</legend>
+        <legend>欲培養的核心素養項目 (三面九向, 可複選)</legend>
         <fieldset>
             <legend>A 自主行動</legend>
             <div class="checkbox-group">
@@ -217,51 +291,59 @@
     <input type="text" id="goal2" placeholder="教學目標 2">
     <input type="text" id="goal3" placeholder="教學目標 3">
 
-    <!-- 新增：教學重點 -->
-    <label>教學重點：</label>
-    <textarea id="teachingFocus" rows="3" placeholder="條列說明本節課教師希望傳達的關鍵知識點或技能"></textarea>
+    <label for="teachingFocus">教學重點：</label>
+    <textarea id="teachingFocus" rows="4" placeholder="條列說明本節課教師希望傳達的關鍵知識點或技能"></textarea>
 
-    <!-- 新增：學生學習重點 -->
-    <label>學生學習重點：</label>
-    <textarea id="studentLearningFocus" rows="3" placeholder="條列說明希望學生在本節課中具體學會、做到或理解的內容"></textarea>
+    <label for="studentLearningFocus">學生學習重點：</label>
+    <textarea id="studentLearningFocus" rows="4" placeholder="條列說明希望學生在本節課中具體學會、做到或理解的內容"></textarea>
 
     <button class="btn" onclick="generatePrompt()">✨ 產生教案指令</button>
 
-    <textarea id="output" rows="18" readonly></textarea> <!-- Increased rows slightly more -->
+    <label for="output" style="margin-top: 20px;">產生的指令：</label>
+    <textarea id="output" rows="20" readonly style="background-color: #e9ecef;"></textarea> <!-- Slightly styled output area -->
+
     <button class="btn" onclick="copyPrompt()">📋 複製指令</button>
-    <a class="ai-btn" href="https://chat.openai.com" target="_blank">🚀 開啟 ChatGPT 並貼上</a>
+    <a class="ai-btn" href="https://chat.openai.com" target="_blank" rel="noopener noreferrer">🚀 開啟 ChatGPT 並貼上</a> <!-- Added rel attribute -->
 
     <div class="footer">
-      <p>👣 回到功能區</p>
-      <a href="https://tangcat1125.github.io/catteacher/tools.html">
-        <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="paw" class="paw">
-      </a>
-      <p>喜歡這個工具嗎？請到 <a href="https://www.facebook.com/share/p/159FQUFrYG/" target="_blank">貓老師的臉書按讚支持！</a> ❤️</p>
+      <p>
+        <a href="https://tangcat1125.github.io/catteacher/tools.html">
+          <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="paw" class="paw">
+          回到功能區
+        </a>
+      </p>
+      <p>喜歡這個工具嗎？請到 <a href="https://www.facebook.com/share/p/159FQUFrYG/" target="_blank" rel="noopener noreferrer">貓老師的臉書按讚支持！</a> ❤️</p>
+      <p><small>© 2024 白貓AI工作室 & 貓老師</small></p> <!-- Example copyright -->
     </div>
   </div>
 
   <script>
     function generatePrompt() {
       // 取得基本欄位的值
-      const school = document.getElementById("school").value;
-      const designerName = document.getElementById("designerName").value;
-      const topic = document.getElementById("topic").value;
-      const grade = document.getElementById("grade").value;
-      const subject = document.getElementById("subject").value;
-      const g1 = document.getElementById("goal1").value;
-      const g2 = document.getElementById("goal2").value;
-      const g3 = document.getElementById("goal3").value;
-      // 新增：取得教學重點和學生學習重點
-      const teachingFocus = document.getElementById("teachingFocus").value;
-      const studentLearningFocus = document.getElementById("studentLearningFocus").value;
+      const school = document.getElementById("school").value.trim();
+      const designerName = document.getElementById("designerName").value.trim();
+      const topic = document.getElementById("topic").value.trim();
+      const grade = document.getElementById("grade").value; // Grade is from select, no trim needed
+      const subject = document.getElementById("subject").value; // Subject is from select
+      const periods = document.getElementById("periods").value;
+      const g1 = document.getElementById("goal1").value.trim();
+      const g2 = document.getElementById("goal2").value.trim();
+      const g3 = document.getElementById("goal3").value.trim();
+      const teachingFocus = document.getElementById("teachingFocus").value.trim();
+      const studentLearningFocus = document.getElementById("studentLearningFocus").value.trim();
 
+      // --- 根據年級判斷每節課時間 ---
+      let periodDuration = 45; // 預設為國中/高中 45 分鐘
+      if (grade.includes('國小')) {
+          periodDuration = 40;
+      }
+      // --- 判斷結束 ---
 
       // 取得選取的 SDGs
       const selectedSdgs = [];
       const sdgCheckboxes = document.querySelectorAll('input[name="sdg"]:checked');
       sdgCheckboxes.forEach((checkbox) => {
-        // Use the full text from the value attribute for clarity in the prompt
-        selectedSdgs.push(checkbox.value);
+        selectedSdgs.push(checkbox.value); // value contains full description
       });
       const sdgsText = selectedSdgs.length > 0 ? `連結的SDGs指標：${selectedSdgs.join('、')}\n` : '';
 
@@ -269,76 +351,91 @@
       const selectedCompetencies = [];
       const competencyCheckboxes = document.querySelectorAll('input[name="competency"]:checked');
       competencyCheckboxes.forEach((checkbox) => {
-         // Use the full text from the value attribute
-        selectedCompetencies.push(checkbox.value);
+        selectedCompetencies.push(checkbox.value); // value contains full description
       });
       const competenciesText = selectedCompetencies.length > 0 ? `欲培養的核心素養：${selectedCompetencies.join('、')}\n` : '';
 
+      // --- 組裝指令字串 ---
+      let text = `請幫我根據以下條件設計一份 ${periods} 節課的教案（每節課 ${periodDuration} 分鐘）：\n\n`; // Start with a clear summary
 
-      // 組裝指令字串
-      const text = `請幫我根據以下條件設計一份教案：\n` +
-        `學校：${school}\n` +
-        `教案設計人：${designerName}\n` +
-        `教學主題：${topic}\n` +
-        `年級：${grade}\n` +
-        `科目：${subject}\n` +
-        sdgsText +
-        competenciesText +
-        `教學目標：\n` +
-        (g1 ? `1. ${g1}\n` : '') +
-        (g2 ? `2. ${g2}\n` : '') +
-        (g3 ? `3. ${g3}\n` : '') +
-        `\n` + // 空行區隔
-        // 新增：加入教學重點和學生學習重點 (如果使用者有填寫)
-        (teachingFocus ? `教學重點：\n${teachingFocus}\n\n` : '') +
-        (studentLearningFocus ? `學生學習重點：\n${studentLearningFocus}\n\n` : '') +
-        // -- 教案格式說明 --
-        `教案格式請使用橫式表格，包含以下欄位：\n` +
-        `1. 教學活動流程（包含引起動機、發展活動、綜合活動）\n` +
-        `2. 學生活動與互動方式（說明學生需進行的活動、討論或操作）\n` +
-        `3. 四學應用（標註活動主要涉及的學習方式：自學、互學、導學、共學）\n` +
-        `4. 教學資源（使用的教具、媒材、數位工具等）\n` +
-        `5. 時間分配（分鐘）\n` +
-        `6. 評量方式（口語評量、實作評量、學習單、提問、觀察記錄等）\n` +
-        `7. 對應核心素養（標註活動主要對應前面選擇的哪些核心素養項目）\n`+
-        `\n` + // 空行區隔
-        // -- 學生自評表說明 --
-        `學生自評表：\n` +
-        `請另外設計一份學生自評表，讓學生可以針對「學習參與度」、「合作分享」、「表達清晰度」這三個指標進行自我評鑑。\n`+
-        `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`+
-        `最後請加上「給自己的鼓勵」和「簽名」欄位。`;
+      // 基本資訊
+      text += `--- 基本資訊 ---\n`;
+      if (school) text += `學校：${school}\n`;
+      if (designerName) text += `教案設計人：${designerName}\n`;
+      if (topic) text += `教學主題：${topic}\n`;
+      text += `年級：${grade}\n`;
+      text += `科目：${subject}\n`;
+      text += `教學節數：${periods} 節\n`;
+      text += `每節課時間：${periodDuration} 分鐘\n`;
+      if (sdgsText) text += sdgsText; // Add if exists
+      if (competenciesText) text += competenciesText; // Add if exists
+      text += `\n`;
 
+      // 教學目標、重點
+      text += `--- 教學目標與重點 ---\n`;
+      if (g1 || g2 || g3) {
+        text += `教學目標：\n`;
+        if (g1) text += `1. ${g1}\n`;
+        if (g2) text += `2. ${g2}\n`;
+        if (g3) text += `3. ${g3}\n`;
+      }
+      if (teachingFocus) text += `\n教學重點：\n${teachingFocus}\n`;
+      if (studentLearningFocus) text += `\n學生學習重點：\n${studentLearningFocus}\n`;
+      text += `\n`;
 
-      document.getElementById("output").value = text.trim();
+      // 教案格式要求
+      text += `--- 教案內容要求 ---\n`;
+      text += `請將教學活動合理分配到 ${periods} 節課中。\n`;
+      text += `教案格式請使用橫式表格，包含以下欄位：\n`;
+      text += `1. 教學活動流程（包含引起動機、發展活動、綜合活動，並標示對應節次）\n`; // Added suggestion to mark period
+      text += `2. 學生活動與互動方式（說明學生需進行的活動、討論或操作）\n`;
+      text += `3. 四學應用（標註活動主要涉及：自學、互學、導學、共學）\n`;
+      text += `4. 教學資源（使用的教具、媒材、數位工具等）\n`;
+      text += `5. 時間分配（分鐘，請確保每節課總時數為 ${periodDuration} 分鐘）\n`;
+      text += `6. 評量方式（具體說明評量方法，如：口語評量、實作評量、學習單、提問、觀察記錄等）\n`;
+      text += `7. 對應核心素養（標註活動主要對應前面選擇的核心素養項目）\n\n`;
+
+      // 學生自評表要求
+      text += `--- 學生自評表要求 ---\n`;
+      text += `請另外設計一份學生自評表，讓學生可以針對「學習參與度」、「合作分享」、「表達清晰度」這三個指標進行自我評鑑。\n`;
+      text += `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`;
+      text += `最後請加上「給自己的鼓勵」和「簽名」欄位。\n`;
+
+      document.getElementById("output").value = text.trim(); // Use trim() for safety
     }
 
     function copyPrompt() {
       const output = document.getElementById("output");
-      if (output.value === "") {
+      if (!output.value) { // Check if empty
           alert("請先產生指令！");
           return;
       }
-      output.select();
+      output.select(); // Select the text
+      output.setSelectionRange(0, 99999); // For mobile devices
+
+      // Use Clipboard API if available
       if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(output.value).then(() => {
               alert("已複製教案指令到剪貼簿！");
           }).catch(err => {
-              console.error('無法複製到剪貼簿: ', err);
+              console.error('無法使用 Clipboard API: ', err);
+              // Fallback to execCommand
               try {
-                  output.select();
                   document.execCommand('copy');
-                  alert("已複製教案指令到剪貼簿！(fallback)");
+                  alert("已複製教案指令到剪貼簿！(Fallback)");
               } catch (e) {
-                  alert("複製失敗，請手動複製。");
+                  console.error('execCommand 失敗: ', e);
+                  alert("複製失敗，您的瀏覽器可能不支援此功能，請手動複製。");
               }
           });
       } else {
+          // Fallback for older browsers or insecure contexts
            try {
-              output.select();
               document.execCommand('copy');
               alert("已複製教案指令到剪貼簿！(execCommand)");
           } catch (e) {
-              alert("複製失敗，請手動複製。");
+              console.error('execCommand 失敗: ', e);
+              alert("複製失敗，您的瀏覽器可能不支援此功能，請手動複製。");
           }
       }
     }
