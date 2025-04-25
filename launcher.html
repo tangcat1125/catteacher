@@ -3,210 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>教案精靈指令產生器</title>
+  <title>教案精靈指令產生器 (終極懶人版)</title> <!-- 改個應景的標題 -->
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: "Microsoft JhengHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Added fallback fonts */
-      background: #f5f5f5;
-      line-height: 1.6; /* Improved readability */
-    }
-    .container {
-      max-width: 800px;
-      margin: 20px auto; /* Added top/bottom margin */
-      background: white;
-      padding: 25px; /* Slightly more padding */
-      border-radius: 12px;
-      box-shadow: 0 2px 15px rgba(0,0,0,0.1); /* Slightly adjusted shadow */
-      box-sizing: border-box;
-    }
-    h1 {
-      text-align: center;
-      color: #333;
-      font-size: 1.8em;
-      margin-bottom: 20px; /* Space below heading */
-    }
-    /* Combined rule for block elements */
-    label, select, input[type=text], input[type=number], textarea, fieldset {
-      display: block;
-      width: 100%;
-      margin-top: 15px; /* Consistent top margin */
-      margin-bottom: 5px; /* Space between label and input */
-      font-size: 1em;
-      font-weight: bold; /* Make labels stand out */
-      color: #555; /* Slightly softer label color */
-      box-sizing: border-box;
-    }
-    /* Specific margin for top-level elements if needed */
-    label:first-of-type, fieldset:first-of-type { /* Adjust first fieldset too */
-        margin-top: 0;
-    }
-
-    /* Combined rule for input/select/textarea styling */
-    input[type=text], input[type=number], select, textarea {
-      padding: 10px; /* Increased padding */
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      width: 100%;
-      box-sizing: border-box;
-      font-family: inherit;
-      font-size: 1em; /* Ensure consistent font size */
-      margin-top: 0; /* Remove top margin for inputs following labels */
-      font-weight: normal; /* Normal weight for input text */
-    }
-    textarea {
-        resize: vertical; /* Allow vertical resizing */
-    }
-    input:focus, select:focus, textarea:focus {
-        border-color: #2c74d6; /* Highlight on focus */
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(44, 116, 214, 0.2);
-    }
-
-    /* Style for checkboxes */
-    .checkbox-group {
-        margin-top: 5px; /* Space above checkbox group */
-    }
-    .checkbox-group label {
-        display: inline-block;
-        width: auto;
-        margin-right: 15px;
-        margin-bottom: 8px; /* Increased bottom margin */
-        font-weight: normal; /* Normal weight for checkbox labels */
-        color: #333; /* Standard text color */
-        cursor: pointer; /* Indicate clickable */
-        line-height: 1.4; /* Adjust line-height for checkboxes */
-    }
-    .checkbox-group input[type="checkbox"] {
-        width: auto;
-        margin-right: 5px;
-        vertical-align: middle;
-        cursor: pointer; /* Indicate clickable */
-    }
-    fieldset {
-        border: 1px solid #ddd; /* Lighter border */
-        border-radius: 8px; /* Slightly more rounded */
-        padding: 15px;
-        margin-top: 20px;
-        margin-bottom: 20px;
-    }
-    legend {
-        font-weight: bold;
-        padding: 0 10px; /* More padding */
-        color: #333;
-        font-size: 1.1em; /* Slightly larger legend */
-    }
-    fieldset fieldset { /* Nested fieldsets */
-        margin-top: 10px;
-        margin-bottom: 10px;
-        border-color: #eee; /* Even lighter border for nested */
-        padding: 10px; /* Adjust padding for nested */
-    }
-    fieldset fieldset legend {
-        font-size: 1em; /* Smaller legend for nested */
-        font-weight: normal;
-        color: #555;
-        padding: 0 5px; /* Adjust padding */
-    }
-    /* --- End checkbox styles --- */
-
-    .btn, .ai-btn {
-      margin-top: 20px; /* More space above buttons */
-      background-color: #2c74d6;
-      color: white;
-      border: none;
-      padding: 12px 15px; /* Larger padding */
-      cursor: pointer;
-      border-radius: 5px;
-      font-size: 1.1em; /* Slightly larger button text */
-      width: 100%;
-      box-sizing: border-box;
-      transition: background-color 0.2s ease; /* Smooth hover effect */
-      text-align: center; /* Ensure text is centered for <a> */
-      display: block; /* Ensure <a> takes full width */
-      text-decoration: none; /* Remove underline from <a> */
-    }
-    .btn:hover, .ai-btn:hover {
-      background-color: #1e5fbf;
-    }
-    .ai-btn {
-      background-color: #28a745; /* Green for AI button */
-    }
-    .ai-btn:hover {
-      background-color: #218838;
-    }
-    #output { /* Style the output textarea */
-        background-color: #e9ecef;
-        font-family: Consolas, "Courier New", monospace; /* Monospace font for code-like text */
-        font-size: 0.95em;
-        line-height: 1.5;
-        margin-top: 5px; /* Align with other inputs */
-    }
-    label[for="output"] { /* Style the label for the output textarea */
-        margin-top: 25px; /* More space before output area */
-    }
-    .footer {
-      text-align: center;
-      margin-top: 30px; /* More space above footer */
-      padding-top: 20px; /* Add padding top for separation */
-      border-top: 1px solid #eee; /* Separator line */
-      font-size: 0.9em;
-      color: #777;
-    }
-    .footer p {
-        margin-bottom: 10px; /* Space between footer paragraphs */
-    }
-    .footer a {
-        color: #2c74d6; /* Consistent link color */
-        text-decoration: none;
-    }
-    .footer a:hover {
-        text-decoration: underline;
-    }
-    .paw {
-      width: 35px; /* Slightly smaller paw */
-      cursor: pointer;
-      vertical-align: middle; /* Align paw nicely */
-      margin: 0 5px; /* Space around paw */
-    }
-    .studio-img {
-      display: block;
-      margin: 0 auto 25px auto; /* Centered, more space below */
-      max-height: 100px; /* Adjusted height */
-      width: auto;
-    }
-    /* Responsive adjustments */
+    /* CSS 樣式部分保持不變，與上一版相同 */
+    html, body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f5f5; line-height: 1.6; }
+    .container { max-width: 800px; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
+    h1 { text-align: center; color: #333; font-size: 1.8em; margin-bottom: 20px; }
+    label, select, input[type=text], input[type=number], textarea, fieldset { display: block; width: 100%; margin-top: 15px; margin-bottom: 5px; font-size: 1em; font-weight: bold; color: #555; box-sizing: border-box; }
+    label:first-of-type, fieldset:first-of-type { margin-top: 0; }
+    input[type=text], input[type=number], select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box; font-family: inherit; font-size: 1em; margin-top: 0; font-weight: normal; }
+    textarea { resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: #2c74d6; outline: none; box-shadow: 0 0 0 2px rgba(44, 116, 214, 0.2); }
+    .checkbox-group { margin-top: 5px; }
+    .checkbox-group label { display: inline-block; width: auto; margin-right: 15px; margin-bottom: 8px; font-weight: normal; color: #333; cursor: pointer; line-height: 1.4; }
+    .checkbox-group input[type="checkbox"] { width: auto; margin-right: 5px; vertical-align: middle; cursor: pointer; }
+    fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-top: 20px; margin-bottom: 20px; }
+    legend { font-weight: bold; padding: 0 10px; color: #333; font-size: 1.1em; }
+    fieldset fieldset { margin-top: 10px; margin-bottom: 10px; border-color: #eee; padding: 10px; }
+    fieldset fieldset legend { font-size: 1em; font-weight: normal; color: #555; padding: 0 5px; }
+    .btn, .ai-btn { margin-top: 20px; background-color: #2c74d6; color: white; border: none; padding: 12px 15px; cursor: pointer; border-radius: 5px; font-size: 1.1em; width: 100%; box-sizing: border-box; transition: background-color 0.2s ease; text-align: center; display: block; text-decoration: none; }
+    .btn:hover, .ai-btn:hover { background-color: #1e5fbf; }
+    .ai-btn { background-color: #28a745; }
+    .ai-btn:hover { background-color: #218838; }
+    #output { background-color: #e9ecef; font-family: Consolas, "Courier New", monospace; font-size: 0.95em; line-height: 1.5; margin-top: 5px; }
+    label[for="output"] { margin-top: 25px; }
+    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 0.9em; color: #777; }
+    .footer p { margin-bottom: 10px; }
+    .footer a { color: #2c74d6; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .paw { width: 35px; cursor: pointer; vertical-align: middle; margin: 0 5px; }
+    .studio-img { display: block; margin: 0 auto 25px auto; max-height: 100px; width: auto; }
     @media screen and (max-width: 600px) {
-      .container {
-        padding: 15px;
-        margin: 10px; /* Adjust margin for small screens */
-      }
-      h1 {
-        font-size: 1.6em;
-      }
-      .btn, .ai-btn {
-        font-size: 1em;
-        padding: 10px 12px;
-      }
-      .checkbox-group label {
-        display: block; /* Stack checkboxes */
-        margin-right: 0;
-        width: 100%; /* Take full width */
-        margin-bottom: 10px; /* More space between stacked checkboxes */
-      }
-      fieldset {
-        padding: 10px;
-      }
-       fieldset fieldset {
-           padding: 8px;
-       }
+      .container { padding: 15px; margin: 10px; }
+      h1 { font-size: 1.6em; }
+      .btn, .ai-btn { font-size: 1em; padding: 10px 12px; }
+      .checkbox-group label { display: block; margin-right: 0; width: 100%; margin-bottom: 10px; }
+      fieldset { padding: 10px; }
+      fieldset fieldset { padding: 8px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>教案精靈指令產生器</h1>
+    <h1>教案精靈指令產生器 (終極懶人版)</h1>
     <img src="images/white_cat_ai_studio_h300_equal.png" class="studio-img" alt="白貓AI工作室">
 
     <label for="school">學校：</label>
@@ -216,13 +55,13 @@
     <input type="text" id="designerName">
 
     <label for="topic">教學主題：</label>
-    <input type="text" id="topic" required> <!-- Added required for basic necessity -->
+    <input type="text" id="topic" required placeholder="（這個總得填一下吧...）"> <!-- 稍微提示一下 -->
 
     <label for="grade">年級：</label>
     <select id="grade">
       <option>國小一年級</option>
       <option>國小二年級</option>
-      <option selected>國小三年級</option> <!-- Default selection example -->
+      <option selected>國小三年級</option>
       <option>國小四年級</option>
       <option>國小五年級</option>
       <option>國小六年級</option>
@@ -238,7 +77,7 @@
     <select id="subject">
       <option>國語</option>
       <option>數學</option>
-      <option selected>自然</option> <!-- Default selection example -->
+      <option selected>自然</option>
       <option>社會</option>
       <option>生活課程</option>
       <option>綜合活動</option>
@@ -246,7 +85,6 @@
       <option>藝術</option>
       <option>科技</option>
       <option>英語</option>
-      <!-- Add more subjects if needed -->
     </select>
 
     <label for="periods">教學節數：</label>
@@ -254,9 +92,9 @@
 
     <!-- SDGs 指標選項 -->
     <fieldset>
-        <legend>連結的SDGs指標 (可複選)</legend>
+        <legend>連結的SDGs指標 (選填，留空將由 AI 建議)</legend> <!-- 提示 AI 會建議 -->
         <div class="checkbox-group">
-            <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
+             <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
             <label><input type="checkbox" name="sdg" value="SDG2 消除飢餓"> SDG2 消除飢餓</label>
             <label><input type="checkbox" name="sdg" value="SDG3 健康與福祉"> SDG3 健康與福祉</label>
             <label><input type="checkbox" name="sdg" value="SDG4 優質教育"> SDG4 優質教育</label>
@@ -278,7 +116,7 @@
 
     <!-- 核心素養選項 (三面九向) -->
      <fieldset>
-        <legend>欲培養的核心素養項目 (三面九向, 可複選)</legend>
+        <legend>欲培養的核心素養項目 (選填，留空將由 AI 建議)</legend> <!-- 提示 AI 會建議 -->
         <fieldset>
             <legend>A 自主行動</legend>
             <div class="checkbox-group">
@@ -305,7 +143,7 @@
         </fieldset>
     </fieldset>
 
-    <label for="goal1">教學目標（建議三項）：</label>
+    <label for="goal1">教學目標：</label>
     <input type="text" id="goal1" placeholder="教學目標 1 (選填，留空將由 AI 生成)">
     <input type="text" id="goal2" placeholder="教學目標 2 (選填，留空將由 AI 生成)">
     <input type="text" id="goal3" placeholder="教學目標 3 (選填，留空將由 AI 生成)">
@@ -316,7 +154,7 @@
     <label for="studentLearningFocus">學生學習重點：</label>
     <textarea id="studentLearningFocus" rows="4" placeholder="（選填）條列說明希望學生在本節課中具體學會、做到或理解的內容。若留空，將由 AI 生成。"></textarea>
 
-    <button class="btn" onclick="generatePrompt()">✨ 產生教案指令</button>
+    <button class="btn" onclick="generatePrompt()">✨ 產生教案指令 (讓AI Carry!)</button> <!-- 按鈕文字也改一下 -->
 
     <label for="output">產生的指令：</label>
     <textarea id="output" rows="20" readonly></textarea>
@@ -332,13 +170,13 @@
         </a>
       </p>
       <p>喜歡這個工具嗎？請到 <a href="https://www.facebook.com/share/p/159FQUFrYG/" target="_blank" rel="noopener noreferrer">貓老師的臉書按讚支持！</a> ❤️</p>
-      <p><small>© 2024 白貓AI工作室 & 貓老師</small></p> <!-- Example copyright -->
+      <p><small>© 2024 白貓AI工作室 & 貓老師</small></p>
     </div>
   </div>
 
   <script>
     function generatePrompt() {
-      // 取得基本欄位的值
+      // --- 取得所有欄位的值 ---
       const school = document.getElementById("school").value.trim();
       const designerName = document.getElementById("designerName").value.trim();
       const topic = document.getElementById("topic").value.trim();
@@ -351,53 +189,59 @@
       const teachingFocus = document.getElementById("teachingFocus").value.trim();
       const studentLearningFocus = document.getElementById("studentLearningFocus").value.trim();
 
-      // --- 根據年級判斷每節課時間 ---
+      // --- 檢查教學主題 ---
+      if (!topic) {
+          alert("哎呀！至少「教學主題」要填一下啦，不然 AI 也不知道要教什麼喔！😅");
+          document.getElementById("topic").focus();
+          return;
+      }
+
+      // --- 判斷課時 ---
       let periodDuration = 45;
       if (grade.includes('國小')) {
           periodDuration = 40;
       }
-      // --- 判斷結束 ---
 
-      // 取得選取的 SDGs
+      // --- 處理選取的 SDGs ---
+      let sdgsText = '';
       const selectedSdgs = [];
       const sdgCheckboxes = document.querySelectorAll('input[name="sdg"]:checked');
-      sdgCheckboxes.forEach((checkbox) => {
-        selectedSdgs.push(checkbox.value);
-      });
-      const sdgsText = selectedSdgs.length > 0 ? `連結的SDGs指標：${selectedSdgs.join('、')}\n` : '';
+      if (sdgCheckboxes.length > 0) { // 如果有勾選
+          sdgCheckboxes.forEach((checkbox) => {
+            selectedSdgs.push(checkbox.value);
+          });
+          sdgsText = `連結的SDGs指標：${selectedSdgs.join('、')}\n`;
+      } else { // 如果沒勾選，要求 AI 建議
+          sdgsText = `連結的SDGs指標：(請根據教學主題「${topic}」和年級「${grade}」，建議數個最相關的SDGs指標)\n`;
+      }
 
-      // 取得選取的核心素養
+      // --- 處理選取的核心素養 ---
+      let competenciesText = '';
       const selectedCompetencies = [];
       const competencyCheckboxes = document.querySelectorAll('input[name="competency"]:checked');
-      competencyCheckboxes.forEach((checkbox) => {
-        selectedCompetencies.push(checkbox.value);
-      });
-      const competenciesText = selectedCompetencies.length > 0 ? `欲培養的核心素養：${selectedCompetencies.join('、')}\n` : '';
+      if (competencyCheckboxes.length > 0) { // 如果有勾選
+          competencyCheckboxes.forEach((checkbox) => {
+            selectedCompetencies.push(checkbox.value);
+          });
+          competenciesText = `欲培養的核心素養：${selectedCompetencies.join('、')}\n`;
+      } else { // 如果沒勾選，要求 AI 建議
+          competenciesText = `欲培養的核心素養：(請根據教學主題「${topic}」和年級「${grade}」，建議數個最相關的核心素養項目)\n`;
+      }
 
-      // --- 組裝指令字串 ---
+      // --- 開始組裝指令字串 ---
       let text = `請幫我根據以下條件設計一份 ${periods} 節課的教案（每節課 ${periodDuration} 分鐘）：\n\n`;
 
-      // 基本資訊
+      // --- 基本資訊 ---
       text += `--- 基本資訊 ---\n`;
       if (school) text += `學校：${school}\n`;
       if (designerName) text += `教案設計人：${designerName}\n`;
-      if (topic) {
-          text += `教學主題：${topic}\n`;
-      } else {
-           // 如果連主題都沒填（雖然設了 required），給 AI 一個明確指示
-          alert("請務必填寫「教學主題」！"); // 提醒使用者
-          document.getElementById("topic").focus(); // 將焦點移至主題欄位
-          return; // 停止執行，不產生指令
-      }
+      text += `教學主題：${topic}\n`;
       text += `年級：${grade}\n`;
       text += `科目：${subject}\n`;
       text += `教學節數：${periods} 節\n`;
-      text += `每節課時間：${periodDuration} 分鐘\n`;
-      if (sdgsText) text += sdgsText;
-      if (competenciesText) text += competenciesText;
-      text += `\n`;
+      text += `每節課時間：${periodDuration} 分鐘\n\n`;
 
-      // 教學目標、重點
+      // --- 教學目標與重點 ---
       text += `--- 教學目標與重點 ---\n`;
       // 處理教學目標 (若空白則要求 AI 生成)
       if (g1 || g2 || g3) {
@@ -406,16 +250,14 @@
         if (g2) text += `2. ${g2}\n`;
         if (g3) text += `3. ${g3}\n`;
       } else {
-        text += `教學目標：(請根據教學主題「${topic}」生成合適的教學目標，建議三項)\n`; // 已確保 topic 有值
+        text += `教學目標：(請根據教學主題「${topic}」生成合適的教學目標，建議三項)\n`;
       }
-
       // 處理教學重點 (若空白則要求 AI 生成)
       if (teachingFocus) {
           text += `\n教學重點：\n${teachingFocus}\n`;
       } else {
           text += `\n教學重點：(請根據教學主題和目標，生成條列式的教學重點)\n`;
       }
-
       // 處理學生學習重點 (若空白則要求 AI 生成)
       if (studentLearningFocus) {
           text += `\n學生學習重點：\n${studentLearningFocus}\n`;
@@ -424,7 +266,13 @@
       }
       text += `\n`;
 
-      // 教案格式要求
+      // --- 課綱與素養連結 ---
+      text += `--- 課綱與素養連結 ---\n`;
+      text += sdgsText; // 直接加入，內容已包含建議文字 (如果未選)
+      text += competenciesText; // 直接加入，內容已包含建議文字 (如果未選)
+      text += `\n`;
+
+      // --- 教案內容要求 ---
       text += `--- 教案內容要求 ---\n`;
       text += `請將教學活動合理分配到 ${periods} 節課中。\n`;
       text += `教案格式請使用橫式表格，包含以下欄位：\n`;
@@ -434,17 +282,19 @@
       text += `4. 教學資源（使用的教具、媒材、數位工具等）\n`;
       text += `5. 時間分配（分鐘，請確保每節課總時數為 ${periodDuration} 分鐘）\n`;
       text += `6. 評量方式（具體說明評量方法，如：口語評量、實作評量、學習單、提問、觀察記錄等）\n`;
-      text += `7. 對應核心素養（標註活動主要對應前面選擇的核心素養項目）\n\n`;
+      text += `7. 對應核心素養（標註此活動主要對應建議或選擇的核心素養項目）\n\n`; // 稍微修改提示文字
 
-      // 學生自評表要求
+      // --- 學生自評表要求 ---
       text += `--- 學生自評表要求 ---\n`;
       text += `請另外設計一份學生自評表，讓學生可以針對「學習參與度」、「合作分享」、「表達清晰度」這三個指標進行自我評鑑。\n`;
       text += `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`;
       text += `最後請加上「給自己的鼓勵」和「簽名」欄位。\n`;
 
+      // --- 輸出結果 ---
       document.getElementById("output").value = text.trim();
     }
 
+    // --- copyPrompt 函數 ---
     function copyPrompt() {
       const output = document.getElementById("output");
       if (!output.value) {
@@ -452,7 +302,7 @@
           return;
       }
       output.select();
-      output.setSelectionRange(0, 99999); // For mobile devices
+      output.setSelectionRange(0, 99999);
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(output.value).then(() => {
