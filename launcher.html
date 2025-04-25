@@ -39,7 +39,7 @@
       box-sizing: border-box;
     }
     /* Specific margin for top-level elements if needed */
-    label:first-of-type {
+    label:first-of-type, fieldset:first-of-type { /* Adjust first fieldset too */
         margin-top: 0;
     }
 
@@ -76,6 +76,7 @@
         font-weight: normal; /* Normal weight for checkbox labels */
         color: #333; /* Standard text color */
         cursor: pointer; /* Indicate clickable */
+        line-height: 1.4; /* Adjust line-height for checkboxes */
     }
     .checkbox-group input[type="checkbox"] {
         width: auto;
@@ -100,11 +101,13 @@
         margin-top: 10px;
         margin-bottom: 10px;
         border-color: #eee; /* Even lighter border for nested */
+        padding: 10px; /* Adjust padding for nested */
     }
     fieldset fieldset legend {
         font-size: 1em; /* Smaller legend for nested */
         font-weight: normal;
         color: #555;
+        padding: 0 5px; /* Adjust padding */
     }
     /* --- End checkbox styles --- */
 
@@ -133,9 +136,21 @@
     .ai-btn:hover {
       background-color: #218838;
     }
+    #output { /* Style the output textarea */
+        background-color: #e9ecef;
+        font-family: Consolas, "Courier New", monospace; /* Monospace font for code-like text */
+        font-size: 0.95em;
+        line-height: 1.5;
+        margin-top: 5px; /* Align with other inputs */
+    }
+    label[for="output"] { /* Style the label for the output textarea */
+        margin-top: 25px; /* More space before output area */
+    }
     .footer {
       text-align: center;
       margin-top: 30px; /* More space above footer */
+      padding-top: 20px; /* Add padding top for separation */
+      border-top: 1px solid #eee; /* Separator line */
       font-size: 0.9em;
       color: #777;
     }
@@ -178,10 +193,14 @@
         display: block; /* Stack checkboxes */
         margin-right: 0;
         width: 100%; /* Take full width */
+        margin-bottom: 10px; /* More space between stacked checkboxes */
       }
       fieldset {
         padding: 10px;
       }
+       fieldset fieldset {
+           padding: 8px;
+       }
     }
   </style>
 </head>
@@ -197,7 +216,7 @@
     <input type="text" id="designerName">
 
     <label for="topic">教學主題：</label>
-    <input type="text" id="topic">
+    <input type="text" id="topic" required> <!-- Added required for basic necessity -->
 
     <label for="grade">年級：</label>
     <select id="grade">
@@ -286,24 +305,24 @@
         </fieldset>
     </fieldset>
 
-    <label>教學目標（建議三項）：</label>
-    <input type="text" id="goal1" placeholder="教學目標 1">
-    <input type="text" id="goal2" placeholder="教學目標 2">
-    <input type="text" id="goal3" placeholder="教學目標 3">
+    <label for="goal1">教學目標（建議三項）：</label>
+    <input type="text" id="goal1" placeholder="教學目標 1 (選填，留空將由 AI 生成)">
+    <input type="text" id="goal2" placeholder="教學目標 2 (選填，留空將由 AI 生成)">
+    <input type="text" id="goal3" placeholder="教學目標 3 (選填，留空將由 AI 生成)">
 
     <label for="teachingFocus">教學重點：</label>
-    <textarea id="teachingFocus" rows="4" placeholder="條列說明本節課教師希望傳達的關鍵知識點或技能。如果操作者沒有寫，人工智慧自動生成內容。"></textarea>
+    <textarea id="teachingFocus" rows="4" placeholder="（選填）條列說明本節課教師希望傳達的關鍵知識點或技能。若留空，將由 AI 生成。"></textarea>
 
     <label for="studentLearningFocus">學生學習重點：</label>
-    <textarea id="studentLearningFocus" rows="4" placeholder="條列說明希望學生在本節課中具體學會、做到或理解的內容。如果操作者沒有寫，人工智慧自動生成內容。"></textarea>
+    <textarea id="studentLearningFocus" rows="4" placeholder="（選填）條列說明希望學生在本節課中具體學會、做到或理解的內容。若留空，將由 AI 生成。"></textarea>
 
     <button class="btn" onclick="generatePrompt()">✨ 產生教案指令</button>
 
-    <label for="output" style="margin-top: 20px;">產生的指令：</label>
-    <textarea id="output" rows="20" readonly style="background-color: #e9ecef;"></textarea> <!-- Slightly styled output area -->
+    <label for="output">產生的指令：</label>
+    <textarea id="output" rows="20" readonly></textarea>
 
     <button class="btn" onclick="copyPrompt()">📋 複製指令</button>
-    <a class="ai-btn" href="https://chat.openai.com" target="_blank" rel="noopener noreferrer">🚀 開啟 ChatGPT 並貼上</a> <!-- Added rel attribute -->
+    <a class="ai-btn" href="https://chat.openai.com" target="_blank" rel="noopener noreferrer">🚀 開啟 ChatGPT 並貼上</a>
 
     <div class="footer">
       <p>
@@ -323,8 +342,8 @@
       const school = document.getElementById("school").value.trim();
       const designerName = document.getElementById("designerName").value.trim();
       const topic = document.getElementById("topic").value.trim();
-      const grade = document.getElementById("grade").value; // Grade is from select, no trim needed
-      const subject = document.getElementById("subject").value; // Subject is from select
+      const grade = document.getElementById("grade").value;
+      const subject = document.getElementById("subject").value;
       const periods = document.getElementById("periods").value;
       const g1 = document.getElementById("goal1").value.trim();
       const g2 = document.getElementById("goal2").value.trim();
@@ -333,7 +352,7 @@
       const studentLearningFocus = document.getElementById("studentLearningFocus").value.trim();
 
       // --- 根據年級判斷每節課時間 ---
-      let periodDuration = 45; // 預設為國中/高中 45 分鐘
+      let periodDuration = 45;
       if (grade.includes('國小')) {
           periodDuration = 40;
       }
@@ -343,7 +362,7 @@
       const selectedSdgs = [];
       const sdgCheckboxes = document.querySelectorAll('input[name="sdg"]:checked');
       sdgCheckboxes.forEach((checkbox) => {
-        selectedSdgs.push(checkbox.value); // value contains full description
+        selectedSdgs.push(checkbox.value);
       });
       const sdgsText = selectedSdgs.length > 0 ? `連結的SDGs指標：${selectedSdgs.join('、')}\n` : '';
 
@@ -351,43 +370,65 @@
       const selectedCompetencies = [];
       const competencyCheckboxes = document.querySelectorAll('input[name="competency"]:checked');
       competencyCheckboxes.forEach((checkbox) => {
-        selectedCompetencies.push(checkbox.value); // value contains full description
+        selectedCompetencies.push(checkbox.value);
       });
       const competenciesText = selectedCompetencies.length > 0 ? `欲培養的核心素養：${selectedCompetencies.join('、')}\n` : '';
 
       // --- 組裝指令字串 ---
-      let text = `請幫我根據以下條件設計一份 ${periods} 節課的教案（每節課 ${periodDuration} 分鐘）：\n\n`; // Start with a clear summary
+      let text = `請幫我根據以下條件設計一份 ${periods} 節課的教案（每節課 ${periodDuration} 分鐘）：\n\n`;
 
       // 基本資訊
       text += `--- 基本資訊 ---\n`;
       if (school) text += `學校：${school}\n`;
       if (designerName) text += `教案設計人：${designerName}\n`;
-      if (topic) text += `教學主題：${topic}\n`;
+      if (topic) {
+          text += `教學主題：${topic}\n`;
+      } else {
+           // 如果連主題都沒填（雖然設了 required），給 AI 一個明確指示
+          alert("請務必填寫「教學主題」！"); // 提醒使用者
+          document.getElementById("topic").focus(); // 將焦點移至主題欄位
+          return; // 停止執行，不產生指令
+      }
       text += `年級：${grade}\n`;
       text += `科目：${subject}\n`;
       text += `教學節數：${periods} 節\n`;
       text += `每節課時間：${periodDuration} 分鐘\n`;
-      if (sdgsText) text += sdgsText; // Add if exists
-      if (competenciesText) text += competenciesText; // Add if exists
+      if (sdgsText) text += sdgsText;
+      if (competenciesText) text += competenciesText;
       text += `\n`;
 
       // 教學目標、重點
       text += `--- 教學目標與重點 ---\n`;
+      // 處理教學目標 (若空白則要求 AI 生成)
       if (g1 || g2 || g3) {
         text += `教學目標：\n`;
         if (g1) text += `1. ${g1}\n`;
         if (g2) text += `2. ${g2}\n`;
         if (g3) text += `3. ${g3}\n`;
+      } else {
+        text += `教學目標：(請根據教學主題「${topic}」生成合適的教學目標，建議三項)\n`; // 已確保 topic 有值
       }
-      if (teachingFocus) text += `\n教學重點：\n${teachingFocus}\n`;
-      if (studentLearningFocus) text += `\n學生學習重點：\n${studentLearningFocus}\n`;
+
+      // 處理教學重點 (若空白則要求 AI 生成)
+      if (teachingFocus) {
+          text += `\n教學重點：\n${teachingFocus}\n`;
+      } else {
+          text += `\n教學重點：(請根據教學主題和目標，生成條列式的教學重點)\n`;
+      }
+
+      // 處理學生學習重點 (若空白則要求 AI 生成)
+      if (studentLearningFocus) {
+          text += `\n學生學習重點：\n${studentLearningFocus}\n`;
+      } else {
+          text += `\n學生學習重點：(請根據教學主題和目標，生成條列式的學生學習重點)\n`;
+      }
       text += `\n`;
 
       // 教案格式要求
       text += `--- 教案內容要求 ---\n`;
       text += `請將教學活動合理分配到 ${periods} 節課中。\n`;
       text += `教案格式請使用橫式表格，包含以下欄位：\n`;
-      text += `1. 教學活動流程（包含引起動機、發展活動、綜合活動，並標示對應節次）\n`; // Added suggestion to mark period
+      text += `1. 教學活動流程（包含引起動機、發展活動、綜合活動，並標示對應節次）\n`;
       text += `2. 學生活動與互動方式（說明學生需進行的活動、討論或操作）\n`;
       text += `3. 四學應用（標註活動主要涉及：自學、互學、導學、共學）\n`;
       text += `4. 教學資源（使用的教具、媒材、數位工具等）\n`;
@@ -401,25 +442,23 @@
       text += `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`;
       text += `最後請加上「給自己的鼓勵」和「簽名」欄位。\n`;
 
-      document.getElementById("output").value = text.trim(); // Use trim() for safety
+      document.getElementById("output").value = text.trim();
     }
 
     function copyPrompt() {
       const output = document.getElementById("output");
-      if (!output.value) { // Check if empty
+      if (!output.value) {
           alert("請先產生指令！");
           return;
       }
-      output.select(); // Select the text
+      output.select();
       output.setSelectionRange(0, 99999); // For mobile devices
 
-      // Use Clipboard API if available
       if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(output.value).then(() => {
               alert("已複製教案指令到剪貼簿！");
           }).catch(err => {
               console.error('無法使用 Clipboard API: ', err);
-              // Fallback to execCommand
               try {
                   document.execCommand('copy');
                   alert("已複製教案指令到剪貼簿！(Fallback)");
@@ -429,7 +468,6 @@
               }
           });
       } else {
-          // Fallback for older browsers or insecure contexts
            try {
               document.execCommand('copy');
               alert("已複製教案指令到剪貼簿！(execCommand)");
