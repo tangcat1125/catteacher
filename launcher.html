@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>教案精靈指令產生器 (含測驗題生成。請老師們注意：這個都是AI生成的東西，不時會有AI幻覺存在，不代表一定內容都正確。貓貓必須特別說明)</title> <!-- 更新標題 -->
+  <title>教案精靈指令產生器 (含多樣測驗題)</title> <!-- 更新標題 -->
   <style>
     /* CSS 樣式與上一版相同... */
     html, body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f5f5; line-height: 1.6; }
@@ -14,14 +14,12 @@
     input[type=text], input[type=number], select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box; font-family: inherit; font-size: 1em; margin-top: 0; font-weight: normal; }
     textarea { resize: vertical; }
     input:focus, select:focus, textarea:focus { border-color: #2c74d6; outline: none; box-shadow: 0 0 0 2px rgba(44, 116, 214, 0.2); }
-    /* Checkbox and Radio button styling */
     .checkbox-group label, .radio-group label { display: inline-block; width: auto; margin-right: 15px; margin-bottom: 8px; font-weight: normal; color: #333; cursor: pointer; line-height: 1.4; }
     .checkbox-group input[type="checkbox"], .radio-group input[type="radio"] { width: auto; margin-right: 5px; vertical-align: middle; cursor: pointer; }
     fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-top: 20px; margin-bottom: 20px; }
     legend { font-weight: bold; padding: 0 10px; color: #333; font-size: 1.1em; }
     fieldset fieldset { margin-top: 10px; margin-bottom: 10px; border-color: #eee; padding: 10px; }
     fieldset fieldset legend { font-size: 1em; font-weight: normal; color: #555; padding: 0 5px; }
-    /* --- End checkbox/radio styles --- */
     .btn, .ai-btn { margin-top: 20px; background-color: #2c74d6; color: white; border: none; padding: 12px 15px; cursor: pointer; border-radius: 5px; font-size: 1.1em; width: 100%; box-sizing: border-box; transition: background-color 0.2s ease; text-align: center; display: block; text-decoration: none; }
     .btn:hover, .ai-btn:hover { background-color: #1e5fbf; }
     .ai-btn { background-color: #28a745; }
@@ -38,7 +36,8 @@
       .container { padding: 15px; margin: 10px; }
       h1 { font-size: 1.6em; }
       .btn, .ai-btn { font-size: 1em; padding: 10px 12px; }
-      .checkbox-group label, .radio-group label { display: block; margin-right: 0; width: 100%; margin-bottom: 10px; } /* Stack radios too */
+      /* Stack checkboxes/radios on small screens */
+      .checkbox-group label, .radio-group label { display: block; margin-right: 0; width: 100%; margin-bottom: 10px; }
       fieldset { padding: 10px; }
       fieldset fieldset { padding: 8px; }
     }
@@ -46,54 +45,31 @@
 </head>
 <body>
   <div class="container">
-    <h1>教案精靈指令產生器 (含測驗題生成)</h1>
+    <h1>教案精靈指令產生器 (含多樣測驗題)</h1>
     <img src="images/white_cat_ai_studio_h300_equal.png" class="studio-img" alt="白貓AI工作室">
 
     <!-- 基本資訊欄位... (與上一版相同) -->
     <label for="school">學校：</label>
     <input type="text" id="school">
-
     <label for="designerName">教案設計人姓名：</label>
     <input type="text" id="designerName">
-
     <label for="topic">教學主題：</label>
     <input type="text" id="topic" required placeholder="（這個總得填一下吧...）">
-
     <label for="grade">年級：</label>
     <select id="grade">
-      <option>國小一年級</option>
-      <option>國小二年級</option>
-      <option selected>國小三年級</option>
-      <option>國小四年級</option>
-      <option>國小五年級</option>
-      <option>國小六年級</option>
-      <option>國中七年級</option>
-      <option>國中八年級</option>
-      <option>國中九年級</option>
-      <option>高中一年級</option>
-      <option>高中二年級</option>
-      <option>高中三年級</option>
+      <option>國小一年級</option><option>國小二年級</option><option selected>國小三年級</option><option>國小四年級</option><option>國小五年級</option><option>國小六年級</option>
+      <option>國中七年級</option><option>國中八年級</option><option>國中九年級</option>
+      <option>高中一年級</option><option>高中二年級</option><option>高中三年級</option>
     </select>
-
     <label for="subject">科目：</label>
     <select id="subject">
-      <option>國語</option>
-      <option>數學</option>
-      <option selected>自然</option>
-      <option>社會</option>
-      <option>生活課程</option>
-      <option>綜合活動</option>
-      <option>健康與體育</option>
-      <option>藝術</option>
-      <option>科技</option>
-      <option>英語</option>
+      <option>國語</option><option>數學</option><option selected>自然</option><option>社會</option><option>生活課程</option><option>綜合活動</option><option>健康與體育</option><option>藝術</option><option>科技</option><option>英語</option>
     </select>
-
     <label for="periods">教學節數：</label>
     <input type="number" id="periods" min="1" step="1" value="1" placeholder="請輸入正整數">
 
     <!-- SDGs 指標選項... (與上一版相同) -->
-     <fieldset>
+    <fieldset>
         <legend>連結的SDGs指標 (選填，留空將由 AI 建議)</legend>
         <div class="checkbox-group">
             <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
@@ -150,40 +126,32 @@
     <input type="text" id="goal1" placeholder="教學目標 1 (選填，留空將由 AI 生成)">
     <input type="text" id="goal2" placeholder="教學目標 2 (選填，留空將由 AI 生成)">
     <input type="text" id="goal3" placeholder="教學目標 3 (選填，留空將由 AI 生成)">
-
     <label for="teachingFocus">教學重點：</label>
     <textarea id="teachingFocus" rows="4" placeholder="（選填）條列說明本節課教師希望傳達的關鍵知識點或技能。若留空，將由 AI 生成。"></textarea>
-
     <label for="studentLearningFocus">學生學習重點：</label>
     <textarea id="studentLearningFocus" rows="4" placeholder="（選填）條列說明希望學生在本節課中具體學會、做到或理解的內容。若留空，將由 AI 生成。"></textarea>
 
-    <!-- 新增：測驗題生成選項 -->
+    <!-- 修改：測驗題生成選項 (改成 Checkbox) -->
     <fieldset>
-        <legend>是否需要 AI 生成隨堂測驗題？</legend>
-        <div class="radio-group">
-            <label><input type="radio" name="quizType" value="no" checked> 否</label>
-            <label><input type="radio" name="quizType" value="single"> 是 (單選題)</label>
-            <label><input type="radio" name="quizType" value="multi"> 是 (複選題)</label>
+        <legend>選擇要生成的測驗題型 (可複選)</legend>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="quizTypes" value="single"> 單選題</label>
+            <label><input type="checkbox" name="quizTypes" value="multi"> 複選題</label>
+            <label><input type="checkbox" name="quizTypes" value="tf"> 是非題</label>
+            <label><input type="checkbox" name="quizTypes" value="short"> 簡答題</label>
         </div>
     </fieldset>
 
     <!-- 按鈕與輸出區域... -->
     <button class="btn" onclick="generatePrompt()">✨ 產生教案指令 (含測驗題)</button>
-
     <label for="output">產生的指令：</label>
     <textarea id="output" rows="20" readonly></textarea>
-
     <button class="btn" onclick="copyPrompt()">📋 複製指令</button>
     <a class="ai-btn" href="https://chat.openai.com" target="_blank" rel="noopener noreferrer">🚀 開啟 ChatGPT 並貼上</a>
 
     <!-- Footer... (與上一版相同) -->
      <div class="footer">
-      <p>
-        <a href="https://tangcat1125.github.io/catteacher/tools.html">
-          <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="paw" class="paw">
-          回到功能區
-        </a>
-      </p>
+      <p><a href="https://tangcat1125.github.io/catteacher/tools.html"><img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="paw" class="paw"> 回到功能區</a></p>
       <p>喜歡這個工具嗎？請到 <a href="https://www.facebook.com/share/p/159FQUFrYG/" target="_blank" rel="noopener noreferrer">貓老師的臉書按讚支持！</a> ❤️</p>
       <p><small>© 2024 白貓AI工作室 & 貓老師</small></p>
     </div>
@@ -203,8 +171,12 @@
       const g3 = document.getElementById("goal3").value.trim();
       const teachingFocus = document.getElementById("teachingFocus").value.trim();
       const studentLearningFocus = document.getElementById("studentLearningFocus").value.trim();
-      // 新增：讀取測驗題選項
-      const quizType = document.querySelector('input[name="quizType"]:checked').value;
+      // 修改：讀取所有勾選的測驗題 Checkbox
+      const selectedQuizTypes = [];
+      const quizCheckboxes = document.querySelectorAll('input[name="quizTypes"]:checked');
+      quizCheckboxes.forEach(checkbox => {
+          selectedQuizTypes.push(checkbox.value);
+      });
 
       // --- 檢查教學主題 ---
       if (!topic) {
@@ -215,13 +187,13 @@
 
       // --- 判斷課時與學程 ---
       let periodDuration = 45;
-      let gradeLevel = "國中/高中"; // 預設
+      let gradeLevel = "國中/高中";
       if (grade.includes('國小')) {
           periodDuration = 40;
           gradeLevel = "國小";
       } else if (grade.includes('國中')) {
            gradeLevel = "國中";
-      } // 可以再加 else if (grade.includes('高中')) ...
+      }
 
       // --- 處理選取的 SDGs ---
       let sdgsText = '';
@@ -247,8 +219,6 @@
 
       // --- 開始組裝指令字串 ---
       let text = `請幫我根據以下條件設計一份 ${periods} 節課的教案（每節課 ${periodDuration} 分鐘）：\n\n`;
-
-      // --- 基本資訊 ---
       text += `--- 基本資訊 ---\n`;
       if (school) text += `學校：${school}\n`;
       if (designerName) text += `教案設計人：${designerName}\n`;
@@ -257,28 +227,18 @@
       text += `科目：${subject}\n`;
       text += `教學節數：${periods} 節\n`;
       text += `每節課時間：${periodDuration} 分鐘\n\n`;
-
-      // --- 教學目標與重點 ---
       text += `--- 教學目標與重點 ---\n`;
       if (g1 || g2 || g3) {
         text += `教學目標：\n`;
         if (g1) text += `1. ${g1}\n`; if (g2) text += `2. ${g2}\n`; if (g3) text += `3. ${g3}\n`;
-      } else {
-        text += `教學目標：(請根據教學主題「${topic}」生成合適的教學目標，建議三項)\n`;
-      }
+      } else { text += `教學目標：(請根據教學主題「${topic}」生成合適的教學目標，建議三項)\n`; }
       if (teachingFocus) { text += `\n教學重點：\n${teachingFocus}\n`; }
       else { text += `\n教學重點：(請根據教學主題和目標，生成條列式的教學重點)\n`; }
       if (studentLearningFocus) { text += `\n學生學習重點：\n${studentLearningFocus}\n`; }
       else { text += `\n學生學習重點：(請根據教學主題和目標，生成條列式的學生學習重點)\n`; }
       text += `\n`;
-
-      // --- 課綱與素養連結 ---
       text += `--- 課綱與素養連結 ---\n`;
-      text += sdgsText;
-      text += competenciesText;
-      text += `\n`;
-
-      // --- 教案內容要求 ---
+      text += sdgsText; text += competenciesText; text += `\n`;
       text += `--- 教案內容要求 ---\n`;
       text += `請將教學活動合理分配到 ${periods} 節課中。\n`;
       text += `教案格式請使用橫式表格，包含以下欄位：\n`;
@@ -289,26 +249,39 @@
       text += `5. 時間分配（分鐘，請確保每節課總時數為 ${periodDuration} 分鐘）\n`;
       text += `6. 評量方式（具體說明評量方法，如：口語評量、實作評量、學習單、提問、觀察記錄等）\n`;
       text += `7. 對應核心素養（標註此活動主要對應建議或選擇的核心素養項目）\n\n`;
-
-      // --- 學生自評表要求 ---
       text += `--- 學生自評表要求 ---\n`;
       text += `請另外設計一份學生自評表，讓學生可以針對「學習參與度」、「合作分享」、「表達清晰度」這三個指標進行自我評鑑。\n`;
       text += `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`;
       text += `最後請加上「給自己的鼓勵」和「簽名」欄位。\n\n`;
 
-      // --- 新增：隨堂測驗題要求 (根據選項加入) ---
-      if (quizType === 'single' || quizType === 'multi') {
-          text += `--- 隨堂測驗 (選擇題) ---\n`;
-          const questionType = (quizType === 'single') ? '單選' : '複選';
-          text += `請根據本教案內容，為「${gradeLevel}」學生設計 5 題選擇題 (${questionType}題)。\n`; // 預設 5 題
-          text += `格式要求：\n`;
-          text += `1. 每題包含4個選項，編號為 1, 2, 3, 4。\n`;
-          text += `2. 題目與選項文字請以「黑字」呈現。\n`;
-          text += `3. 請在正確答案的選項編號前加上「(○)」標記。例如：(○) 3. xxxxx\n`;
-          if (quizType === 'multi') {
-              text += `   (若是複選題，請標記所有正確選項)。\n`;
-          }
-          text += `4. (格式提醒：最終呈現時，正確答案的選項文字建議使用「紅色」標示，但AI只需標記(○)即可)。\n`;
+      // --- 修改：隨堂測驗題要求 (根據勾選的 Checkbox 加入) ---
+      if (selectedQuizTypes.length > 0) { // 檢查是否有勾選任何題型
+          text += `--- 隨堂測驗 (根據勾選生成) ---\n`;
+          text += `請根據本教案內容，為「${gradeLevel}」學生設計以下題型 (建議每種題型 3-5 題)：\n\n`;
+
+          selectedQuizTypes.forEach(type => {
+              if (type === 'single') {
+                  text += `**單選題：**\n`;
+                  text += `- 每題包含4個選項 (1, 2, 3, 4)。\n`;
+                  text += `- 題目與選項文字為「黑字」。\n`;
+                  text += `- 在正確答案的選項編號前加上「(○)」。例：(○) 3. 選項內容\n`;
+                  text += `- (格式提醒：最終呈現時，正確選項文字建議用紅色標示)。\n\n`;
+              } else if (type === 'multi') {
+                  text += `**複選題：**\n`;
+                  text += `- 每題包含4個選項 (1, 2, 3, 4)。\n`;
+                  text += `- 題目與選項文字為「黑字」。\n`;
+                  text += `- 在**所有**正確答案的選項編號前加上「(○)」。例：(○) 1. 選項A (○) 3. 選項C\n`;
+                  text += `- (格式提醒：最終呈現時，正確選項文字建議用紅色標示)。\n\n`;
+              } else if (type === 'tf') {
+                  text += `**是非題：**\n`;
+                  text += `- 題目為一個敘述句，文字為「黑字」。\n`;
+                  text += `- 請在題目後標示正確答案為「(O)」或「(X)」。例：題目敘述。[正確答案：(O)]\n\n`;
+              } else if (type === 'short') {
+                  text += `**簡答題：**\n`;
+                  text += `- 題目文字為「黑字」。\n`;
+                  text += `- 請提供該題的「參考答案」或「評分要點」。\n\n`;
+              }
+          });
       }
       // --- 測驗題要求結束 ---
 
@@ -319,34 +292,14 @@
     // --- copyPrompt 函數保持不變 ---
     function copyPrompt() {
       const output = document.getElementById("output");
-      if (!output.value) {
-          alert("請先產生指令！");
-          return;
-      }
-      output.select();
-      output.setSelectionRange(0, 99999);
-
+      if (!output.value) { alert("請先產生指令！"); return; }
+      output.select(); output.setSelectionRange(0, 99999);
       if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(output.value).then(() => {
-              alert("已複製教案指令到剪貼簿！");
-          }).catch(err => {
-              console.error('無法使用 Clipboard API: ', err);
-              try {
-                  document.execCommand('copy');
-                  alert("已複製教案指令到剪貼簿！(Fallback)");
-              } catch (e) {
-                  console.error('execCommand 失敗: ', e);
-                  alert("複製失敗，您的瀏覽器可能不支援此功能，請手動複製。");
-              }
-          });
+          navigator.clipboard.writeText(output.value).then(() => { alert("已複製教案指令到剪貼簿！"); })
+          .catch(err => { console.error('無法使用 Clipboard API: ', err); try { document.execCommand('copy'); alert("已複製教案指令到剪貼簿！(Fallback)"); } catch (e) { console.error('execCommand 失敗: ', e); alert("複製失敗，您的瀏覽器可能不支援此功能，請手動複製。"); } });
       } else {
-           try {
-              document.execCommand('copy');
-              alert("已複製教案指令到剪貼簿！(execCommand)");
-          } catch (e) {
-              console.error('execCommand 失敗: ', e);
-              alert("複製失敗，您的瀏覽器可能不支援此功能，請手動複製。");
-          }
+           try { document.execCommand('copy'); alert("已複製教案指令到剪貼簿！(execCommand)"); }
+           catch (e) { console.error('execCommand 失敗: ', e); alert("複製失敗，您的瀏覽器可能不支援此功能，請手動複製。"); }
       }
     }
   </script>
