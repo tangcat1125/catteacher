@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>教案精靈指令產生器 (終極懶人版，對應課綱指標的部份，大多都是幻覺文字，請老師們務必自己修正為最佳。不然，懶惰，只會讓你在教場上死更快！)</title> <!-- 改個應景的標題 -->
+  <title>教案精靈指令產生器 (含測驗題生成。請老師們注意：這個都是AI生成的東西，不時會有AI幻覺存在，不代表一定內容都正確。貓貓必須特別說明)</title> <!-- 更新標題 -->
   <style>
-    /* CSS 樣式部分保持不變，與上一版相同 */
+    /* CSS 樣式與上一版相同... */
     html, body { margin: 0; padding: 0; font-family: "Microsoft JhengHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f5f5; line-height: 1.6; }
     .container { max-width: 800px; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
     h1 { text-align: center; color: #333; font-size: 1.8em; margin-bottom: 20px; }
@@ -14,13 +14,14 @@
     input[type=text], input[type=number], select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box; font-family: inherit; font-size: 1em; margin-top: 0; font-weight: normal; }
     textarea { resize: vertical; }
     input:focus, select:focus, textarea:focus { border-color: #2c74d6; outline: none; box-shadow: 0 0 0 2px rgba(44, 116, 214, 0.2); }
-    .checkbox-group { margin-top: 5px; }
-    .checkbox-group label { display: inline-block; width: auto; margin-right: 15px; margin-bottom: 8px; font-weight: normal; color: #333; cursor: pointer; line-height: 1.4; }
-    .checkbox-group input[type="checkbox"] { width: auto; margin-right: 5px; vertical-align: middle; cursor: pointer; }
+    /* Checkbox and Radio button styling */
+    .checkbox-group label, .radio-group label { display: inline-block; width: auto; margin-right: 15px; margin-bottom: 8px; font-weight: normal; color: #333; cursor: pointer; line-height: 1.4; }
+    .checkbox-group input[type="checkbox"], .radio-group input[type="radio"] { width: auto; margin-right: 5px; vertical-align: middle; cursor: pointer; }
     fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-top: 20px; margin-bottom: 20px; }
     legend { font-weight: bold; padding: 0 10px; color: #333; font-size: 1.1em; }
     fieldset fieldset { margin-top: 10px; margin-bottom: 10px; border-color: #eee; padding: 10px; }
     fieldset fieldset legend { font-size: 1em; font-weight: normal; color: #555; padding: 0 5px; }
+    /* --- End checkbox/radio styles --- */
     .btn, .ai-btn { margin-top: 20px; background-color: #2c74d6; color: white; border: none; padding: 12px 15px; cursor: pointer; border-radius: 5px; font-size: 1.1em; width: 100%; box-sizing: border-box; transition: background-color 0.2s ease; text-align: center; display: block; text-decoration: none; }
     .btn:hover, .ai-btn:hover { background-color: #1e5fbf; }
     .ai-btn { background-color: #28a745; }
@@ -37,7 +38,7 @@
       .container { padding: 15px; margin: 10px; }
       h1 { font-size: 1.6em; }
       .btn, .ai-btn { font-size: 1em; padding: 10px 12px; }
-      .checkbox-group label { display: block; margin-right: 0; width: 100%; margin-bottom: 10px; }
+      .checkbox-group label, .radio-group label { display: block; margin-right: 0; width: 100%; margin-bottom: 10px; } /* Stack radios too */
       fieldset { padding: 10px; }
       fieldset fieldset { padding: 8px; }
     }
@@ -45,9 +46,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>教案精靈指令產生器 (終極懶人版)</h1>
+    <h1>教案精靈指令產生器 (含測驗題生成)</h1>
     <img src="images/white_cat_ai_studio_h300_equal.png" class="studio-img" alt="白貓AI工作室">
 
+    <!-- 基本資訊欄位... (與上一版相同) -->
     <label for="school">學校：</label>
     <input type="text" id="school">
 
@@ -55,7 +57,7 @@
     <input type="text" id="designerName">
 
     <label for="topic">教學主題：</label>
-    <input type="text" id="topic" required placeholder="（這個總得填一下吧...）"> <!-- 稍微提示一下 -->
+    <input type="text" id="topic" required placeholder="（這個總得填一下吧...）">
 
     <label for="grade">年級：</label>
     <select id="grade">
@@ -90,11 +92,11 @@
     <label for="periods">教學節數：</label>
     <input type="number" id="periods" min="1" step="1" value="1" placeholder="請輸入正整數">
 
-    <!-- SDGs 指標選項 -->
-    <fieldset>
-        <legend>連結的SDGs指標 (選填，留空將由 AI 建議)</legend> <!-- 提示 AI 會建議 -->
+    <!-- SDGs 指標選項... (與上一版相同) -->
+     <fieldset>
+        <legend>連結的SDGs指標 (選填，留空將由 AI 建議)</legend>
         <div class="checkbox-group">
-             <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
+            <label><input type="checkbox" name="sdg" value="SDG1 消除貧窮"> SDG1 消除貧窮</label>
             <label><input type="checkbox" name="sdg" value="SDG2 消除飢餓"> SDG2 消除飢餓</label>
             <label><input type="checkbox" name="sdg" value="SDG3 健康與福祉"> SDG3 健康與福祉</label>
             <label><input type="checkbox" name="sdg" value="SDG4 優質教育"> SDG4 優質教育</label>
@@ -114,28 +116,28 @@
         </div>
     </fieldset>
 
-    <!-- 核心素養選項 (三面九向) -->
-     <fieldset>
-        <legend>欲培養的核心素養項目 (選填，留空將由 AI 建議)</legend> <!-- 提示 AI 會建議 -->
+    <!-- 核心素養選項... (與上一版相同) -->
+    <fieldset>
+        <legend>欲培養的核心素養項目 (選填，留空將由 AI 建議)</legend>
         <fieldset>
             <legend>A 自主行動</legend>
-            <div class="checkbox-group">
-                <label><input type="checkbox" name="competency" value="A1 身心素質與自我精進"> A1 身心素質與自我精進</label>
-                <label><input type="checkbox" name="competency" value="A2 系統思考與解決問題"> A2 系統思考與解決問題</label>
-                <label><input type="checkbox" name="competency" value="A3 規劃執行與創新應變"> A3 規劃執行與創新應變</label>
+             <div class="checkbox-group">
+                 <label><input type="checkbox" name="competency" value="A1 身心素質與自我精進"> A1 身心素質與自我精進</label>
+                 <label><input type="checkbox" name="competency" value="A2 系統思考與解決問題"> A2 系統思考與解決問題</label>
+                 <label><input type="checkbox" name="competency" value="A3 規劃執行與創新應變"> A3 規劃執行與創新應變</label>
             </div>
         </fieldset>
         <fieldset>
             <legend>B 溝通互動</legend>
             <div class="checkbox-group">
-                <label><input type="checkbox" name="competency" value="B1 符號運用與溝通表達"> B1 符號運用與溝通表達</label>
-                <label><input type="checkbox" name="competency" value="B2 科技資訊與媒體素養"> B2 科技資訊與媒體素養</label>
-                <label><input type="checkbox" name="competency" value="B3 藝術涵養與美感素養"> B3 藝術涵養與美感素養</label>
+                 <label><input type="checkbox" name="competency" value="B1 符號運用與溝通表達"> B1 符號運用與溝通表達</label>
+                 <label><input type="checkbox" name="competency" value="B2 科技資訊與媒體素養"> B2 科技資訊與媒體素養</label>
+                 <label><input type="checkbox" name="competency" value="B3 藝術涵養與美感素養"> B3 藝術涵養與美感素養</label>
             </div>
         </fieldset>
         <fieldset>
             <legend>C 社會參與</legend>
-            <div class="checkbox-group">
+             <div class="checkbox-group">
                 <label><input type="checkbox" name="competency" value="C1 道德實踐與公民意識"> C1 道德實踐與公民意識</label>
                 <label><input type="checkbox" name="competency" value="C2 人際關係與團隊合作"> C2 人際關係與團隊合作</label>
                 <label><input type="checkbox" name="competency" value="C3 多元文化與國際理解"> C3 多元文化與國際理解</label>
@@ -143,6 +145,7 @@
         </fieldset>
     </fieldset>
 
+    <!-- 教學目標、重點欄位... (與上一版相同) -->
     <label for="goal1">教學目標：</label>
     <input type="text" id="goal1" placeholder="教學目標 1 (選填，留空將由 AI 生成)">
     <input type="text" id="goal2" placeholder="教學目標 2 (選填，留空將由 AI 生成)">
@@ -154,7 +157,18 @@
     <label for="studentLearningFocus">學生學習重點：</label>
     <textarea id="studentLearningFocus" rows="4" placeholder="（選填）條列說明希望學生在本節課中具體學會、做到或理解的內容。若留空，將由 AI 生成。"></textarea>
 
-    <button class="btn" onclick="generatePrompt()">✨ 產生教案指令 (讓AI Carry!)</button> <!-- 按鈕文字也改一下 -->
+    <!-- 新增：測驗題生成選項 -->
+    <fieldset>
+        <legend>是否需要 AI 生成隨堂測驗題？</legend>
+        <div class="radio-group">
+            <label><input type="radio" name="quizType" value="no" checked> 否</label>
+            <label><input type="radio" name="quizType" value="single"> 是 (單選題)</label>
+            <label><input type="radio" name="quizType" value="multi"> 是 (複選題)</label>
+        </div>
+    </fieldset>
+
+    <!-- 按鈕與輸出區域... -->
+    <button class="btn" onclick="generatePrompt()">✨ 產生教案指令 (含測驗題)</button>
 
     <label for="output">產生的指令：</label>
     <textarea id="output" rows="20" readonly></textarea>
@@ -162,7 +176,8 @@
     <button class="btn" onclick="copyPrompt()">📋 複製指令</button>
     <a class="ai-btn" href="https://chat.openai.com" target="_blank" rel="noopener noreferrer">🚀 開啟 ChatGPT 並貼上</a>
 
-    <div class="footer">
+    <!-- Footer... (與上一版相同) -->
+     <div class="footer">
       <p>
         <a href="https://tangcat1125.github.io/catteacher/tools.html">
           <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="paw" class="paw">
@@ -188,6 +203,8 @@
       const g3 = document.getElementById("goal3").value.trim();
       const teachingFocus = document.getElementById("teachingFocus").value.trim();
       const studentLearningFocus = document.getElementById("studentLearningFocus").value.trim();
+      // 新增：讀取測驗題選項
+      const quizType = document.querySelector('input[name="quizType"]:checked').value;
 
       // --- 檢查教學主題 ---
       if (!topic) {
@@ -196,22 +213,24 @@
           return;
       }
 
-      // --- 判斷課時 ---
+      // --- 判斷課時與學程 ---
       let periodDuration = 45;
+      let gradeLevel = "國中/高中"; // 預設
       if (grade.includes('國小')) {
           periodDuration = 40;
-      }
+          gradeLevel = "國小";
+      } else if (grade.includes('國中')) {
+           gradeLevel = "國中";
+      } // 可以再加 else if (grade.includes('高中')) ...
 
       // --- 處理選取的 SDGs ---
       let sdgsText = '';
       const selectedSdgs = [];
       const sdgCheckboxes = document.querySelectorAll('input[name="sdg"]:checked');
-      if (sdgCheckboxes.length > 0) { // 如果有勾選
-          sdgCheckboxes.forEach((checkbox) => {
-            selectedSdgs.push(checkbox.value);
-          });
+      if (sdgCheckboxes.length > 0) {
+          sdgCheckboxes.forEach((checkbox) => { selectedSdgs.push(checkbox.value); });
           sdgsText = `連結的SDGs指標：${selectedSdgs.join('、')}\n`;
-      } else { // 如果沒勾選，要求 AI 建議
+      } else {
           sdgsText = `連結的SDGs指標：(請根據教學主題「${topic}」和年級「${grade}」，建議數個最相關的SDGs指標)\n`;
       }
 
@@ -219,12 +238,10 @@
       let competenciesText = '';
       const selectedCompetencies = [];
       const competencyCheckboxes = document.querySelectorAll('input[name="competency"]:checked');
-      if (competencyCheckboxes.length > 0) { // 如果有勾選
-          competencyCheckboxes.forEach((checkbox) => {
-            selectedCompetencies.push(checkbox.value);
-          });
+      if (competencyCheckboxes.length > 0) {
+          competencyCheckboxes.forEach((checkbox) => { selectedCompetencies.push(checkbox.value); });
           competenciesText = `欲培養的核心素養：${selectedCompetencies.join('、')}\n`;
-      } else { // 如果沒勾選，要求 AI 建議
+      } else {
           competenciesText = `欲培養的核心素養：(請根據教學主題「${topic}」和年級「${grade}」，建議數個最相關的核心素養項目)\n`;
       }
 
@@ -243,33 +260,22 @@
 
       // --- 教學目標與重點 ---
       text += `--- 教學目標與重點 ---\n`;
-      // 處理教學目標 (若空白則要求 AI 生成)
       if (g1 || g2 || g3) {
         text += `教學目標：\n`;
-        if (g1) text += `1. ${g1}\n`;
-        if (g2) text += `2. ${g2}\n`;
-        if (g3) text += `3. ${g3}\n`;
+        if (g1) text += `1. ${g1}\n`; if (g2) text += `2. ${g2}\n`; if (g3) text += `3. ${g3}\n`;
       } else {
         text += `教學目標：(請根據教學主題「${topic}」生成合適的教學目標，建議三項)\n`;
       }
-      // 處理教學重點 (若空白則要求 AI 生成)
-      if (teachingFocus) {
-          text += `\n教學重點：\n${teachingFocus}\n`;
-      } else {
-          text += `\n教學重點：(請根據教學主題和目標，生成條列式的教學重點)\n`;
-      }
-      // 處理學生學習重點 (若空白則要求 AI 生成)
-      if (studentLearningFocus) {
-          text += `\n學生學習重點：\n${studentLearningFocus}\n`;
-      } else {
-          text += `\n學生學習重點：(請根據教學主題和目標，生成條列式的學生學習重點)\n`;
-      }
+      if (teachingFocus) { text += `\n教學重點：\n${teachingFocus}\n`; }
+      else { text += `\n教學重點：(請根據教學主題和目標，生成條列式的教學重點)\n`; }
+      if (studentLearningFocus) { text += `\n學生學習重點：\n${studentLearningFocus}\n`; }
+      else { text += `\n學生學習重點：(請根據教學主題和目標，生成條列式的學生學習重點)\n`; }
       text += `\n`;
 
       // --- 課綱與素養連結 ---
       text += `--- 課綱與素養連結 ---\n`;
-      text += sdgsText; // 直接加入，內容已包含建議文字 (如果未選)
-      text += competenciesText; // 直接加入，內容已包含建議文字 (如果未選)
+      text += sdgsText;
+      text += competenciesText;
       text += `\n`;
 
       // --- 教案內容要求 ---
@@ -282,19 +288,35 @@
       text += `4. 教學資源（使用的教具、媒材、數位工具等）\n`;
       text += `5. 時間分配（分鐘，請確保每節課總時數為 ${periodDuration} 分鐘）\n`;
       text += `6. 評量方式（具體說明評量方法，如：口語評量、實作評量、學習單、提問、觀察記錄等）\n`;
-      text += `7. 對應核心素養（標註此活動主要對應建議或選擇的核心素養項目）\n\n`; // 稍微修改提示文字
+      text += `7. 對應核心素養（標註此活動主要對應建議或選擇的核心素養項目）\n\n`;
 
       // --- 學生自評表要求 ---
       text += `--- 學生自評表要求 ---\n`;
       text += `請另外設計一份學生自評表，讓學生可以針對「學習參與度」、「合作分享」、「表達清晰度」這三個指標進行自我評鑑。\n`;
       text += `自評表格式：橫式表格，包含「評鑑指標」、「五星等第（☆☆☆☆☆，讓學生自行塗黑）」、「具體說明/範例」欄位。\n`;
-      text += `最後請加上「給自己的鼓勵」和「簽名」欄位。\n`;
+      text += `最後請加上「給自己的鼓勵」和「簽名」欄位。\n\n`;
+
+      // --- 新增：隨堂測驗題要求 (根據選項加入) ---
+      if (quizType === 'single' || quizType === 'multi') {
+          text += `--- 隨堂測驗 (選擇題) ---\n`;
+          const questionType = (quizType === 'single') ? '單選' : '複選';
+          text += `請根據本教案內容，為「${gradeLevel}」學生設計 5 題選擇題 (${questionType}題)。\n`; // 預設 5 題
+          text += `格式要求：\n`;
+          text += `1. 每題包含4個選項，編號為 1, 2, 3, 4。\n`;
+          text += `2. 題目與選項文字請以「黑字」呈現。\n`;
+          text += `3. 請在正確答案的選項編號前加上「(○)」標記。例如：(○) 3. xxxxx\n`;
+          if (quizType === 'multi') {
+              text += `   (若是複選題，請標記所有正確選項)。\n`;
+          }
+          text += `4. (格式提醒：最終呈現時，正確答案的選項文字建議使用「紅色」標示，但AI只需標記(○)即可)。\n`;
+      }
+      // --- 測驗題要求結束 ---
 
       // --- 輸出結果 ---
       document.getElementById("output").value = text.trim();
     }
 
-    // --- copyPrompt 函數 ---
+    // --- copyPrompt 函數保持不變 ---
     function copyPrompt() {
       const output = document.getElementById("output");
       if (!output.value) {
