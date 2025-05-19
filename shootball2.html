@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>射彩色球遊戲</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #f0f0f0; font-family: sans-serif; }
+    canvas { display: block; margin: 0 auto; background: #fff; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const ROWS = 5;
+    const COLUMNS = 15;
+    const COLORS = ["red", "blue", "green", "yellow"];
+    const BALL_RADIUS = 20;
+    const BALL_SPACING = 5;
+    const SHOOTER_Y = canvas.height - 60;
+    let ballGrid = [];
+
+    let shooter = {
+      x: canvas.width / 2,
+      angle: 0,
+      currentColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+      nextColors: Array.from({ length: 5 }, () => COLORS[Math.floor(Math.random() * COLORS.length)])
+    };
+
+    function initGrid() {
+      for (let r = 0; r < ROWS; r++) {
+        let row = [];
+        for (let c = 0; c < COLUMNS; c++) {
+          let color = COLORS[Math.floor(Math.random() * COLORS.length)];
+          row.push({ x: c * (BALL_RADIUS * 2 + BALL_SPACING) + 30, y: r * (BALL_RADIUS * 2 + BALL_SPACING) + 30, color });
+        }
+        ballGrid.push(row);
+      }
+    }
+
+    function drawGrid() {
+      for (let row of ballGrid) {
+        for (let ball of row) {
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+          ctx.fillStyle = ball.color;
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawShooter() {
+      ctx.beginPath();
+      ctx.moveTo(shooter.x, SHOOTER_Y);
+      ctx.lineTo(shooter.x + 50 * Math.cos(shooter.angle), SHOOTER_Y - 50 * Math.sin(shooter.angle));
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(shooter.x, SHOOTER_Y, BALL_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = shooter.currentColor;
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function drawNextQueue() {
+      for (let i = 0; i < shooter.nextColors.length; i++) {
+        ctx.beginPath();
+        ctx.arc(40 + i * 40, canvas.height - 20, 15, 0, Math.PI * 2);
+        ctx.fillStyle = shooter.nextColors[i];
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+      drawShooter();
+      drawNextQueue();
+    }
+
+    function detectCollision(x, y) {
+      for (let row of ballGrid) {
+        for (let ball of row) {
+          let dx = ball.x - x;
+          let dy = ball.y - y;
+          if (Math.sqrt(dx * dx + dy * dy) < BALL_RADIUS * 2) {
+            return ball;
+          }
+        }
+      }
+      return null;
+    }
+
+    function addBallToGrid(x, y, color) {
+      ballGrid.push([{ x, y, color }]);
+      let connected = findConnectedBalls(x, y, color);
+      if (connected.length >= 3) {
+        for (let b of connected) {
+          for (let row of ballGrid) {
+            let idx = row.findIndex(ball => ball.x === b.x && ball.y === b.y);
+            if (idx >= 0) row.splice(idx, 1);
+          }
+        }
+      }
+    }
+
+    function findConnectedBalls(x, y, color, visited = new Set()) {
+      let stack = [{ x, y }];
+      let result = [];
+
+      while (stack.length) {
+        let current = stack.pop();
+        let key = `${current.x},${current.y}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        let ball = detectCollision(current.x, current.y);
+        if (ball && ball.color === color) {
+          result.push(ball);
+          let neighbors = [
+            { x: current.x + BALL_RADIUS * 2, y: current.y },
+            { x: current.x - BALL_RADIUS * 2, y: current.y },
+            { x: current.x, y: current.y + BALL_RADIUS * 2 },
+            { x: current.x, y: current.y - BALL_RADIUS * 2 }
+          ];
+          for (let n of neighbors) stack.push(n);
+        }
+      }
+      return result;
+    }
+
+    function shootBall(angle) {
+      let shotX = shooter.x;
+      let shotY = SHOOTER_Y;
+      let dx = Math.cos(angle) * 10;
+      let dy = -Math.sin(angle) * 10;
+      let color = shooter.currentColor;
+
+      function move() {
+        shotX += dx;
+        shotY += dy;
+
+        let collision = detectCollision(shotX, shotY);
+        if (collision || shotY < 0 || shotX < 0 || shotX > canvas.width) {
+          addBallToGrid(shotX, shotY, color);
+          shooter.currentColor = shooter.nextColors.shift();
+          shooter.nextColors.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+          return;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawShooter();
+        drawNextQueue();
+
+        ctx.beginPath();
+        ctx.arc(shotX, shotY, BALL_RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.stroke();
+
+        requestAnimationFrame(move);
+      }
+
+      move();
+    }
+
+    canvas.addEventListener("mousemove", e => {
+      let rect = canvas.getBoundingClientRect();
+      let mouseX = e.clientX - rect.left;
+      let mouseY = e.clientY - rect.top;
+      shooter.angle = Math.atan2(SHOOTER_Y - mouseY, mouseX - shooter.x);
+    });
+
+    canvas.addEventListener("click", () => {
+      shootBall(shooter.angle);
+    });
+
+    initGrid();
+    setInterval(draw, 30);
+  </script>
+</body>
+</html>
