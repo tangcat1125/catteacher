@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>火柴人打街戰</title>
+  <style>
+    body { background: #fff; color: #000; font-family: sans-serif; overflow: hidden; margin: 0; }
+    canvas { background: #f0f0f0; display: block; margin: 0 auto; border: 1px solid #000; }
+    #hud { position: absolute; top: 10px; left: 10px; font-size: 18px; font-weight: bold; }
+    #gameOverScreen { 
+      display: none; 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      background: rgba(0,0,0,0.8); 
+      color: white; 
+      padding: 20px; 
+      text-align: center;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>分數: <span id="score">0</span></div>
+    <div>時間: <span id="time">30</span>秒</div>
+    <div>血量: <span id="health">5</span></div>
+    <div>連擊: <span id="combo">0</span></div>
+  </div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="gameOverScreen">
+    <h2>遊戲結束</h2>
+    <p>最終分數: <span id="finalScore">0</span></p>
+    <button onclick="restartGame()">重新開始</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+
+    let score = 0;
+    let timeLeft = 30;
+    let health = 5;
+    let gameTime = 0;
+    let comboCount = 0;
+    let hasBat = false;
+    let enemies = [];
+    let attacks = [];
+    let gameOver = false;
+
+    const player = {
+      x: 400,
+      y: 300,
+      facing: 'left',
+      width: 20,
+      height: 40
+    };
+
+    class Enemy {
+      constructor(type, direction) {
+        this.type = type;
+        this.direction = direction;
+        this.hp = type === 'black' ? 1 : type === 'red' ? 2 : 3;
+        this.score = type === 'black' ? 5 : type === 'red' ? 6 : 10;
+        this.x = direction === 'left' ? -20 : 820;
+        this.y = 300;
+        this.speed = type === 'black' ? 1.5 : type === 'red' ? 1.2 : 1;
+        this.width = 20;
+        this.height = 40;
+      }
+      move() {
+        this.x += this.direction === 'left' ? this.speed : -this.speed;
+        // 改進碰撞檢測
+        if (Math.abs(this.x - player.x) < (this.width + player.width) / 2 && 
+            Math.abs(this.y - player.y) < (this.height + player.height) / 2) {
+          const dmg = this.type === 'black' ? 1 : this.type === 'red' ? 2 : 3;
+          health -= dmg;
+          document.getElementById('health').textContent = health;
+          this.hp = 0;
+        }
+      }
+    }
+
+    class Attack {
+      constructor(direction) {
+        this.x = player.x + (direction === 'left' ? -10 : 10);
+        this.y = player.y - 20;
+        this.speed = direction === 'left' ? -8 : 8;
+        this.damage = hasBat ? 2 : 1;
+        this.direction = direction;
+        this.active = true;
+        this.width = 20;
+        this.height = 20;
+      }
+      move() {
+        this.x += this.speed;
+        if (this.x < -20 || this.x > 820) this.active = false;
+      }
+    }
+
+    function spawnEnemy() {
+      // 隨時間增加敵人生成機率
+      const spawnRate = Math.min(0.05, 0.02 + gameTime * 0.001);
+      if (Math.random() < spawnRate) {
+        const types = gameTime < 10 ? ['black'] : gameTime < 20 ? ['black', 'red'] : ['black', 'red', 'blue'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const direction = Math.random() > 0.5 ? 'left' : 'right';
+        enemies.push(new Enemy(type, direction));
+      }
+    }
+
+    function restartGame() {
+      score = 0;
+      timeLeft = 30;
+      health = 5;
+      gameTime = 0;
+      comboCount = 0;
+      hasBat = false;
+      enemies = [];
+      attacks = [];
+      gameOver = false;
+      gameOverScreen.style.display = 'none';
+      document.getElementById('score').textContent = score;
+      document.getElementById('health').textContent = health;
+      document.getElementById('time').textContent = Math.ceil(timeLeft);
+      document.getElementById('combo').textContent = comboCount;
+      loop();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (gameOver) return;
+      if (e.key === 'z' || e.key === 'Z') {
+        player.facing = 'left';
+        attacks.push(new Attack('left'));
+      } else if (e.key === 'c' || e.key === 'C') {
+        player.facing = 'right';
+        attacks.push(new Attack('right'));
+      }
+    });
+
+    function update() {
+      gameTime += 1 / 60;
+      spawnEnemy();
+
+      enemies.forEach(e => e.move());
+      attacks.forEach(a => a.move());
+
+      attacks.forEach(attack => {
+        enemies.forEach(enemy => {
+          if (attack.active && 
+              Math.abs(attack.x - enemy.x) < (attack.width + enemy.width) / 2 && 
+              Math.abs(attack.y - enemy.y) < (attack.height + enemy.height) / 2) {
+            enemy.hp -= attack.damage;
+            attack.active = false;
+            if (enemy.hp <= 0) {
+              score += enemy.score;
+              comboCount++;
+              if (comboCount >= 5) hasBat = true;
+              document.getElementById('score').textContent = score;
+              document.getElementById('combo').textContent = comboCount;
+            } else {
+              enemy.x += enemy.x < player.x ? -30 : 30;
+            }
+          }
+        });
+      });
+
+      enemies = enemies.filter(e => e.hp > 0);
+      attacks = attacks.filter(a => a.active);
+
+      document.getElementById('time').textContent = Math.ceil(timeLeft);
+
+      if (health <= 0 || timeLeft <= 0) {
+        gameOver = true;
+        gameOverScreen.style.display = 'block';
+        document.getElementById('finalScore').textContent = score;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 畫地面
+      ctx.fillStyle = '#888';
+      ctx.fillRect(0, 300, canvas.width, 100);
+
+      // 畫玩家
+      ctx.fillStyle = 'darkgreen';
+      ctx.fillRect(player.x - player.width/2, player.y - player.height, player.width, player.height);
+      if (hasBat) {
+        ctx.fillStyle = 'brown';
+        ctx.fillRect(
+          player.facing === 'left' ? player.x - 30 : player.x + 10, 
+          player.y - 30, 
+          20, 5
+        );
+      }
+
+      // 畫敵人
+      enemies.forEach(e => {
+        ctx.fillStyle = e.type === 'black' ? 'black' : e.type === 'red' ? 'red' : 'blue';
+        ctx.fillRect(e.x - e.width/2, e.y - e.height, e.width, e.height);
+        // 顯示敵人血量
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(e.hp, e.x - 5, e.y - e.height - 5);
+      });
+
+      // 畫攻擊
+      ctx.font = '20px sans-serif';
+      attacks.forEach(a => {
+        ctx.fillStyle = hasBat ? 'purple' : 'darkblue';
+        ctx.fillText(a.direction === 'left' ? '←' : '→', a.x, a.y);
+      });
+    }
+
+    function loop() {
+      if (!gameOver) {
+        update();
+        draw();
+        timeLeft -= 1 / 60;
+        requestAnimationFrame(loop);
+      }
+    }
+
+    loop();
+  </script>
+</body>
+</html>
