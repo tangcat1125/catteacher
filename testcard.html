@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卡牌配對遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* 淺藍灰色背景 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* 讓內容從頂部開始 */
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #game-container {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 960px; /* 限制最大寬度 */
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* 增加區塊間距 */
+            align-items: center;
+        }
+        .card {
+            width: 120px; /* 牌卡寬度再次增加 */
+            height: 150px; /* 牌卡高度再次增加 */
+            background-color: #60a5fa; /* 藍色牌卡背景 */
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* 確保圖片不超出邊界 */
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            user-select: none; /* 防止文字被選取 */
+        }
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 圖片覆蓋整個牌卡 */
+            border-radius: 12px; /* 圖片也要圓角 */
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        .card.selected {
+            background-color: #fcd34d; /* 選取時的黃色 */
+            transform: scale(1.5); /* 點擊時放大更多到1.5倍 */
+            box-shadow: 0 8px 16px rgba(252, 211, 77, 0.5);
+            border: 3px solid #fbbf24; /* 選取時的邊框 */
+            z-index: 10; /* 確保放大的卡牌在上方 */
+        }
+        .card.matched {
+            /* 匹配後淡出並縮小，準備移除 */
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .matched-card-item {
+            width: 60px; /* 已配對卡牌在完成區的尺寸縮小 */
+            height: 75px; /* 已配對卡牌在完成區的尺寸縮小 */
+            background-color: #d1d5db; /* 灰色背景 */
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .matched-card-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        #play-area {
+            display: flex;
+            flex-wrap: wrap; /* 允許換行 */
+            gap: 12px; /* 牌卡間距 */
+            min-height: 120px; /* 確保有足夠空間顯示牌卡 */
+            justify-content: center;
+            align-items: flex-start;
+            border: 2px dashed #cbd5e1; /* 虛線邊框 */
+            border-radius: 10px;
+            padding: 15px;
+            background-color: #f8fafc; /* 淺色背景 */
+            width: 100%;
+        }
+        #matched-cards-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px; /* 已配對卡牌間距 */
+            min-height: 60px; /* 已配對區域高度縮小 */
+            justify-content: center;
+            align-items: flex-start;
+            border: 2px solid #a7f3d0; /* 淺綠色邊框 */
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #ecfdf5; /* 淺綠色背景 */
+            width: 100%;
+            margin-top: 20px; /* 與上方區域的間距 */
+        }
+        .button-style {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .button-style:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .draw-button {
+            background-color: #22c55e; /* 綠色 */
+            color: #ffffff;
+        }
+        .draw-button:hover {
+            background-color: #16a34a;
+        }
+        .start-reset-button {
+            background-color: #3b82f6; /* 藍色 */
+            color: #ffffff;
+        }
+        .start-reset-button:hover {
+            background-color: #2563eb;
+        }
+        .disabled-button {
+            background-color: #9ca3af; /* 灰色 */
+            cursor: not-allowed;
+        }
+        .disabled-button:hover {
+            background-color: #9ca3af;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .card {
+                width: 100px; /* 中等螢幕下的牌卡寬度 */
+                height: 130px; /* 中等螢幕下的牌卡高度 */
+            }
+            .matched-card-item {
+                width: 50px; /* 中等螢幕下已配對卡牌尺寸 */
+                height: 65px; /* 中等螢幕下已配對卡牌尺寸 */
+            }
+            #game-container {
+                padding: 20px;
+            }
+            #play-area {
+                gap: 8px;
+                padding: 10px;
+            }
+            .button-style {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            #settings-area {
+                flex-direction: column;
+                gap: 10px;
+            }
+            #attribute-upload-sections {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                width: 90px; /* 小螢幕下的牌卡寬度 */
+                height: 120px; /* 小螢幕下的牌卡高度 */
+            }
+            .matched-card-item {
+                width: 40px; /* 小螢幕下已配對卡牌尺寸 */
+                height: 50px; /* 小螢幕下已配對卡牌尺寸 */
+            }
+            #game-container {
+                padding: 15px;
+            }
+            #play-area {
+                gap: 6px;
+                padding: 8px;
+            }
+            .button-style {
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container" class="flex flex-col items-center gap-6">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">卡牌配對遊戲</h1>
+
+        <div id="settings-area" class="flex flex-col md:flex-row gap-4 items-center justify-center w-full bg-gray-100 p-4 rounded-lg shadow-inner">
+            <div class="flex items-center gap-2">
+                <label for="num-attributes" class="text-gray-700 font-medium whitespace-nowrap">屬性數量 (3-20):</label>
+                <input type="number" id="num-attributes" value="13" min="3" max="20"
+                       class="w-20 p-2 border border-gray-300 rounded-md text-center focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <label for="cards-per-attribute" class="text-gray-700 font-medium whitespace-nowrap">每屬性牌數 (2-4):</label>
+                <input type="number" id="cards-per-attribute" value="3" min="2" max="4"
+                       class="w-20 p-2 border border-gray-300 rounded-md text-center focus:ring-blue-500 focus:border-blue-500">
+            </div>
+        </div>
+
+        <div id="image-upload-area" class="w-full bg-gray-100 p-4 rounded-lg shadow-inner mt-4">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">上傳牌卡圖片</h2>
+            <p class="text-sm text-gray-600 mb-4">請為每個屬性上傳 <span id="required-cards-count" class="font-bold text-blue-600">3</span> 張圖片。
+                <br>
+                <span class="text-red-600 font-bold">注意：您上傳的圖片不會被緩存，重新整理頁面後需要重新上傳。</span>
+            </p>
+            <div id="attribute-upload-sections" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+            <div class="flex justify-center mt-4">
+                <button id="clear-all-images-button" class="button-style bg-red-500 hover:bg-red-600 text-white">清除所有圖片</button>
+            </div>
+        </div>
+
+        <div class="flex gap-4">
+            <button id="draw-button" class="button-style draw-button" disabled>抽牌</button>
+            <button id="start-game-button" class="button-style start-reset-button">開始遊戲</button>
+        </div>
+
+        <div id="message-area" class="text-lg font-medium text-blue-600 h-8">
+            設定遊戲參數並上傳圖片，然後點擊「開始遊戲」！
+        </div>
+
+        <div id="play-area" class="w-full flex flex-wrap justify-center items-start border-dashed border-2 border-gray-300 rounded-lg p-4 bg-gray-50 min-h-[150px]">
+            </div>
+
+        <div id="matched-cards-container" class="w-full mt-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">已成功配對</h2>
+            <div id="matched-cards-area" class="w-full flex flex-wrap justify-center items-start border-2 border-green-300 rounded-lg p-4 bg-green-50 min-h-[80px]">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // 遊戲狀態變數
+        let deck = []; // 牌組
+        let playAreaCards = []; // 牌桌上的牌
+        let selectedCards = []; // 被選取的牌
+        let matchedCardsCount = 0; // 已配對的牌數
+        let gameStarted = false;
+        let currentNumAttributes = 13; // 當前設定的屬性數量 (預設值)
+        let currentCardsPerAttribute = 3; // 當前設定的每屬性牌數 (預設值)
+        let totalCardsInGame = 0; // 遊戲中的總牌數
+        let uploadedImages = {}; // 儲存已上傳的圖片資料 { 'A': [base64_img1, base64_img2], 'B': [...] }
+
+        // DOM 元素 (在 DOMContentLoaded 之後初始化)
+        let drawButton;
+        let startGameButton;
+        let playArea;
+        let messageArea;
+        let numAttributesInput;
+        let cardsPerAttributeInput;
+        let attributeUploadSections;
+        let requiredCardsCountSpan;
+        let clearAllImagesButton;
+        let imageUploadArea;
+        let settingsArea;
+        let matchedCardsArea;
+
+        // 牌卡屬性 (支援 20 種，以應對最大設定)
+        const cardAttributes = [
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+            'N', 'O', 'P', 'Q', 'R', 'S', 'T'
+        ];
+
+        /**
+         * 生成預設的 Base64 圖片
+         * 這些圖片非常小，用於初始緩存，避免 QuotaExceededError
+         * 為所有可能的屬性（最多20個）生成預設圖片
+         * @param {number} numAttrs - 屬性數量
+         * @param {number} cardsPerAttr - 每屬性牌數
+         */
+        function generateDefaultImages(numAttrs, cardsPerAttr) {
+            const defaultImgs = {};
+            const colors = [
+                '#FFDDC1', '#ADD8E6', '#90EE90', '#FFB6C1', '#DDA0DD',
+                '#FFDEAD', '#87CEEB', '#F08080', '#20B2AA', '#778899',
+                '#B0C4DE', '#FFE4E1', '#E0FFFF', '#FFFACD', '#D8BFD8',
+                '#FAFAD2', '#AFEEEE', '#DB7093', '#F4A460', '#C0C0C0'
+            ]; // 更多顏色，確保有20種
+
+            for (let i = 0; i < numAttrs; i++) { // 遍歷指定數量的屬性
+                const attr = cardAttributes[i % cardAttributes.length]; // 使用預設屬性名
+                defaultImgs[attr] = [];
+                for (let j = 0; j < cardsPerAttr; j++) { // 使用傳入的 cardsPerAttr
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 50;
+                    canvas.height = 50;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = colors[i % colors.length]; // 循環使用顏色
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(attr, canvas.width / 2, canvas.height / 2);
+                    defaultImgs[attr].push(canvas.toDataURL('image/png'));
+                }
+            }
+            return defaultImgs;
+        }
+
+        /**
+         * 動態生成每個屬性的圖片上傳區塊
+         */
+        function renderUploadSections() {
+            attributeUploadSections.innerHTML = ''; // 清空先前的區塊
+            // 更新主要的提示文字
+            requiredCardsCountSpan.textContent = cardsPerAttributeInput.value;
+
+            const attributesToUse = cardAttributes.slice(0, parseInt(numAttributesInput.value));
+            attributesToUse.forEach(attr => {
+                // 初始化該屬性的圖片陣列，如果尚未存在
+                if (!uploadedImages[attr]) {
+                    // If no uploaded images for this attribute, use default images
+                    uploadedImages[attr] = generateDefaultImages(1, parseInt(cardsPerAttributeInput.value))[attr]; // Generate for 1 attribute
+                }
+
+                const currentUploadedCount = uploadedImages[attr].length;
+                const requiredCount = parseInt(cardsPerAttributeInput.value);
+                const isCountValid = currentUploadedCount === requiredCount;
+
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'border border-gray-300 rounded-lg p-3 bg-white shadow-sm';
+                sectionDiv.innerHTML = `
+                    <h3 class="font-bold text-gray-700 mb-2">屬性 ${attr}</h3>
+                    <input type="file" multiple accept="image/*" class="attribute-image-upload hidden" data-attribute="${attr}" id="upload-${attr}">
+                    <label for="upload-${attr}" class="block w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white text-center rounded-md cursor-pointer transition upload-button">
+                        上傳圖片 (${currentUploadedCount}/${requiredCount})
+                    </label>
+                    <div class="image-previews flex flex-wrap gap-2 mt-2" data-attribute-previews="${attr}">
+                        </div>
+                    <p class="text-sm text-gray-500 mt-2">
+                        已上傳: <span class="uploaded-count ${isCountValid ? '' : 'text-red-500 font-bold'}" data-attribute-count="${attr}">${currentUploadedCount}</span> / ${requiredCount}
+                        <span class="status-message text-red-500 text-xs ml-1">
+                            ${isCountValid ? '' : (currentUploadedCount < requiredCount ? '(不足)' : '(過多)')}
+                        </span>
+                    </p>
+                `;
+                attributeUploadSections.appendChild(sectionDiv);
+
+                // 為每個文件輸入框添加事件監聽器
+                const fileInput = sectionDiv.querySelector(`.attribute-image-upload`);
+                fileInput.addEventListener('change', handleImageUpload);
+
+                // 渲染該屬性已存在的圖片預覽
+                const previewArea = sectionDiv.querySelector(`[data-attribute-previews="${attr}"]`);
+                uploadedImages[attr].forEach(base64Data => {
+                    const img = document.createElement('img');
+                    img.src = base64Data;
+                    img.className = 'w-16 h-16 object-cover rounded-md border border-gray-200';
+                    previewArea.appendChild(img);
+                });
+            });
+            // 根據遊戲狀態更新上傳區域的啟用/禁用狀態
+            updateButtonStates();
+        }
+
+        /**
+         * 處理圖片文件上傳事件
+         * @param {Event} event - 文件輸入框的 change 事件物件
+         */
+        async function handleImageUpload(event) {
+            const attribute = event.target.dataset.attribute;
+            const files = event.target.files;
+            const requiredCount = parseInt(cardsPerAttributeInput.value);
+
+            if (files.length === 0) return;
+
+            // 清空該屬性現有的圖片，以實現「取代」效果
+            uploadedImages[attribute] = [];
+            const previewArea = document.querySelector(`[data-attribute-previews="${attribute}"]`);
+            previewArea.innerHTML = ''; // 同步清空 DOM 中的預覽圖片
+
+            let filesToProcess = Array.from(files);
+            if (filesToProcess.length > requiredCount) {
+                showMessage(`警告：屬性 ${attribute} 需要 ${requiredCount} 張圖片，您上傳了 ${filesToProcess.length} 張。將只使用前 ${requiredCount} 張。`, 'info');
+                filesToProcess = filesToProcess.slice(0, requiredCount);
+            }
+
+            const uploadedCountSpan = document.querySelector(`[data-attribute-count="${attribute}"]`);
+            const uploadButtonLabel = document.querySelector(`label[for="upload-${attribute}"]`);
+            const statusMessageSpan = uploadedCountSpan.nextElementSibling;
+
+            let processedCount = 0;
+            for (const file of filesToProcess) {
+                if (file.type.startsWith('image/')) {
+                    if (file.size > 500 * 1024) { // 500KB
+                        showMessage('警告：您上傳的圖片較大，可能會影響效能。建議使用較小的圖片。', 'info');
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImages[attribute].push(e.target.result);
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.className = 'w-16 h-16 object-cover rounded-md border border-gray-200';
+                        previewArea.appendChild(img);
+
+                        processedCount++;
+                        // Update UI after each image is loaded and added
+                        const newUploadedCount = uploadedImages[attribute].length;
+                        const isCountValid = newUploadedCount === requiredCount;
+
+                        uploadedCountSpan.textContent = newUploadedCount;
+                        uploadButtonLabel.textContent = `上傳圖片 (${newUploadedCount}/${requiredCount})`;
+
+                        if (isCountValid) {
+                            uploadedCountSpan.classList.remove('text-red-500', 'font-bold');
+                            statusMessageSpan.textContent = '';
+                        } else {
+                            uploadedCountSpan.classList.add('text-red-500', 'font-bold');
+                            statusMessageSpan.textContent = (newUploadedCount < requiredCount ? '(不足)' : '(過多)');
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showMessage('請上傳圖片檔案！', 'error');
+                }
+            }
+            event.target.value = ''; // 清空文件輸入框，以便再次選擇相同文件
+        }
+
+        /**
+         * 清除所有已上傳的圖片
+         */
+        function clearAllImages() {
+            uploadedImages = {}; // 清空所有圖片資料
+            // Re-initialize with default images based on current settings
+            uploadedImages = generateDefaultImages(parseInt(numAttributesInput.value), parseInt(cardsPerAttributeInput.value));
+            renderUploadSections(); // 重新渲染上傳區塊以清除預覽和計數
+            showMessage('所有圖片已清除，已載入預設圖片！', 'info');
+        }
+
+        /**
+         * 生成牌組
+         * 包含 `currentNumAttributes` 種屬性，每種屬性 `currentCardsPerAttribute` 張牌
+         */
+        function generateDeck() {
+            deck = [];
+            let cardIdCounter = 0;
+            const selectedAttributes = cardAttributes.slice(0, currentNumAttributes);
+
+            selectedAttributes.forEach(attr => {
+                const imagesForAttr = uploadedImages[attr];
+                if (imagesForAttr && imagesForAttr.length === currentCardsPerAttribute) {
+                    // 隨機選擇圖片，確保每張牌使用一張圖片
+                    const shuffledImages = [...imagesForAttr].sort(() => 0.5 - Math.random());
+                    shuffledImages.forEach(imgData => {
+                        deck.push({
+                            id: `card-${cardIdCounter++}`,
+                            attribute: attr,
+                            imageData: imgData // 儲存圖片的 Base64 資料
+                        });
+                    });
+                }
+            });
+            totalCardsInGame = deck.length; // 遊戲中的總牌數現在基於實際生成的牌組
+            shuffleDeck(); // 生成後立即洗牌
+        }
+
+        /**
+         * 洗牌 (Fisher-Yates 演算法)
+         */
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]]; // 交換元素
+            }
+        }
+
+        /**
+         * 顯示遊戲訊息
+         * @param {string} message - 要顯示的訊息
+         * @param {string} type - 訊息類型 ('info', 'success', 'error')
+         */
+        function showMessage(message, type = 'info') {
+            messageArea.textContent = message;
+            messageArea.className = `text-lg font-medium h-8`; // 重置樣式
+            if (type === 'success') {
+                messageArea.classList.add('text-green-600');
+            } else if (type === 'error') {
+                messageArea.classList.add('text-red-600');
+            } else {
+                messageArea.classList.add('text-blue-600');
+            }
+        }
+
+        /**
+         * 處理牌卡點擊事件
+         * @param {Event} event - 點擊事件物件
+         */
+        function handleCardClick(event) {
+            if (!gameStarted) return; // 遊戲未開始不處理點擊
+
+            const clickedCardElement = event.currentTarget;
+            const cardId = clickedCardElement.dataset.cardId;
+
+            // 防止選取正在消失的牌卡
+            if (clickedCardElement.classList.contains('matched')) return;
+
+            // 檢查牌是否已經被選取
+            const isSelected = selectedCards.includes(cardId);
+
+            if (isSelected) {
+                // 如果已經選取，則取消選取
+                selectedCards = selectedCards.filter(id => id !== cardId);
+                clickedCardElement.classList.remove('selected');
+            } else {
+                // 如果未選取，則選取
+                if (selectedCards.length < currentCardsPerAttribute) { // 使用動態設定的每屬性牌數
+                    selectedCards.push(cardId);
+                    clickedCardElement.classList.add('selected');
+                }
+            }
+
+            // 如果選取了足夠的牌數，則檢查是否配對成功
+            if (selectedCards.length === currentCardsPerAttribute) { // 使用動態設定的每屬性牌數
+                checkMatch();
+            }
+        } 
+
+        /**
+         * 檢查選取的牌是否配對成功
+         */
+        function checkMatch() {
+            // 獲取選取牌卡的實際物件
+            const selectedCardElements = selectedCards.map(id => document.querySelector(`[data-card-id="${id}"]`));
+            const selectedCardObjects = selectedCards.map(id => playAreaCards.find(card => card.id === id));
+
+            // 檢查所有選取的牌是否存在且屬性相同
+            const firstAttribute = selectedCardObjects[0] ? selectedCardObjects[0].attribute : null;
+            const allMatch = selectedCardObjects.every(card => card && card.attribute === firstAttribute);
+
+            if (allMatch) {
+                // 配對成功
+                showMessage('配對成功！', 'success');
+                moveMatchedCardsToArea(selectedCardElements, selectedCardObjects); // 移動到已配對區域
+            } else {
+                // 配對失敗
+                showMessage('配對失敗，請重新選擇！', 'error');
+                // 短暫顯示錯誤狀態，然後取消所有選取
+                selectedCardElements.forEach(el => {
+                    if (el) {
+                        el.classList.add('border-red-500', 'border-4'); // 暫時顯示紅色邊框
+                        setTimeout(() => {
+                            el.classList.remove('border-red-500', 'border-4', 'selected');
+                        }, 500); // 0.5 秒後移除
+                    }
+                });
+                selectedCards = []; // 清空選取
+            }
+        }
+
+        /**
+         * 將已配對的牌卡移動到已配對區域
+         * @param {HTMLElement[]} matchedElements - 已配對的牌卡 DOM 元素陣列
+         * @param {Object[]} matchedCardObjects - 已配對的牌卡資料物件陣列
+         */
+        function moveMatchedCardsToArea(matchedElements, matchedCardObjects) {
+            // 將匹配的牌從 playAreaCards 中移除
+            playAreaCards = playAreaCards.filter(card => !selectedCards.includes(card.id));
+
+            matchedElements.forEach((el, index) => {
+                if (el) {
+                    el.classList.remove('selected'); // 移除選取狀態
+                    el.classList.add('matched'); // 添加淡出動畫類
+
+                    // 在動畫結束後將卡牌添加到已配對區域
+                    setTimeout(() => {
+                        el.remove(); // 從遊戲區域移除原始元素
+
+                        // 創建一個新的卡牌元素用於已配對區域
+                        const matchedCardDiv = document.createElement('div');
+                        matchedCardDiv.className = 'matched-card-item';
+                        const imgElement = document.createElement('img');
+                        imgElement.src = matchedCardObjects[index].imageData;
+                        imgElement.alt = `Matched Card ${matchedCardObjects[index].attribute}`;
+                        matchedCardDiv.appendChild(imgElement);
+                        matchedCardsArea.appendChild(matchedCardDiv);
+
+                    }, 500); // 等待動畫完成
+                }
+            });
+
+            matchedCardsCount += currentCardsPerAttribute; // 增加已配對的牌數 (使用動態設定)
+            selectedCards = []; // 清空選取
+
+            // 檢查遊戲是否結束
+            if (matchedCardsCount === totalCardsInGame) { // 使用動態總牌數
+                endGame();
+            }
+        }
+
+        /**
+         * 繪製牌卡到遊戲區域
+         * @param {Object} card - 牌卡物件
+         */
+        function renderCard(card) {
+            const cardElement = document.createElement('div');
+            cardElement.classList.add('card');
+            cardElement.dataset.cardId = card.id;
+            cardElement.dataset.attribute = card.attribute;
+
+            const imgElement = document.createElement('img');
+            imgElement.src = card.imageData; // 使用圖片的 Base64 資料
+            imgElement.alt = `Card ${card.attribute}`;
+            imgElement.className = 'w-full h-full object-cover rounded-md'; // 讓圖片填滿牌卡
+
+            cardElement.appendChild(imgElement);
+            cardElement.addEventListener('click', handleCardClick);
+            playArea.appendChild(cardElement);
+        }
+
+        /**
+         * 處理抽牌事件
+         */
+        function drawCard() {
+            if (!gameStarted) {
+                showMessage('請先點擊「開始遊戲」！', 'error');
+                return;
+            }
+
+            if (deck.length > 0) {
+                const card = deck.shift(); // 從牌組中抽一張牌
+                playAreaCards.push(card); // 加入牌桌
+                renderCard(card); // 繪製到畫面
+                showMessage(`抽到一張牌！`); // 不再顯示屬性，因為是圖片
+            } else {
+                // 牌組已空，檢查是否所有牌都已配對
+                if (playAreaCards.length > 0) { // 如果牌桌上還有牌，提示配對
+                    showMessage('牌組已空，請配對現有牌卡！', 'info');
+                    drawButton.classList.add('disabled-button');
+                    drawButton.disabled = true;
+                } else { // 如果牌桌上沒有牌且牌組也空了，表示遊戲結束
+                    endGame();
+                }
+            }
+        }
+
+        /**
+         * 開始遊戲
+         */
+        function startGame() {
+            // 讀取並驗證設定值
+            const newNumAttributes = parseInt(numAttributesInput.value);
+            const newCardsPerAttribute = parseInt(cardsPerAttributeInput.value);
+
+            if (isNaN(newNumAttributes) || newNumAttributes < 3 || newNumAttributes > 20) {
+                showMessage('屬性數量必須在 3 到 20 之間！', 'error');
+                return;
+            }
+            if (isNaN(newCardsPerAttribute) || newCardsPerAttribute < 2 || newCardsPerAttribute > 4) {
+                showMessage('每屬性牌數必須在 2 到 4 之間！', 'error');
+                return;
+            }
+
+            // 更新遊戲設定
+            currentNumAttributes = newNumAttributes;
+            currentCardsPerAttribute = newCardsPerAttribute;
+
+            // 驗證已上傳的圖片
+            const attributesToUse = cardAttributes.slice(0, currentNumAttributes);
+            let allImagesValid = true;
+            let missingAttributes = [];
+            let incorrectCounts = [];
+
+            attributesToUse.forEach(attr => {
+                // 檢查 uploadedImages[attr] 是否存在且長度符合要求
+                if (!uploadedImages[attr] || uploadedImages[attr].length !== currentCardsPerAttribute) {
+                    allImagesValid = false;
+                    if (!uploadedImages[attr] || uploadedImages[attr].length === 0) {
+                        missingAttributes.push(attr);
+                    } else {
+                        incorrectCounts.push(`${attr} (${uploadedImages[attr].length}/${currentCardsPerAttribute})`);
+                    }
+                }
+            });
+
+            if (!allImagesValid) {
+                let errorMessage = '圖片上傳不完整，請檢查：';
+                if (missingAttributes.length > 0) {
+                    errorMessage += `\n缺少屬性圖片：${missingAttributes.join(', ')}。`;
+                }
+                if (incorrectCounts.length > 0) {
+                    errorMessage += `\n圖片數量不正確：${incorrectCounts.join('; ')}。`;
+                }
+                showMessage(errorMessage, 'error');
+                return;
+            }
+
+            gameStarted = true;
+            generateDeck(); // 根據新設定和圖片生成牌組
+            playAreaCards = [];
+            selectedCards = [];
+            matchedCardsCount = 0;
+            playArea.innerHTML = ''; // 清空牌桌
+            matchedCardsArea.innerHTML = ''; // 清空已配對區域
+            showMessage('遊戲開始！抽牌吧！');
+            
+            // 啟用遊戲中的按鈕
+            drawButton.classList.remove('disabled-button');
+            drawButton.disabled = false;
+
+            startGameButton.textContent = '重新開始'; // 改變按鈕文字
+            startGameButton.classList.remove('start-reset-button');
+            startGameButton.classList.add('reset-button'); // 改變按鈕樣式
+
+            // 遊戲開始後隱藏設定和圖片上傳區塊
+            settingsArea.classList.add('hidden');
+            imageUploadArea.classList.add('hidden');
+
+            // 禁用設定輸入框
+            numAttributesInput.disabled = true;
+            cardsPerAttributeInput.disabled = true;
+        }
+
+        /**
+         * 結束遊戲
+         */
+        function endGame() {
+            gameStarted = false;
+            showMessage(`恭喜！所有牌都已配對！`, 'success');
+            
+            // 禁用遊戲中的按鈕
+            drawButton.classList.add('disabled-button');
+            drawButton.disabled = true;
+
+            startGameButton.textContent = '開始遊戲'; // 改變按鈕文字
+            startGameButton.classList.remove('reset-button');
+            startGameButton.classList.add('start-reset-button'); // 改變按鈕樣式
+
+            // 遊戲結束後顯示設定和圖片上傳區塊
+            settingsArea.classList.remove('hidden');
+            imageUploadArea.classList.remove('hidden');
+            updateButtonStates(); // 確保上傳區塊的按鈕狀態正確
+        }
+
+        /**
+         * 重新開始遊戲 (實際是回到初始狀態，等待點擊「開始遊戲」)
+         */
+        function resetGame() {
+            gameStarted = false;
+            deck = []; // 清空牌組，等待重新生成
+            playAreaCards = [];
+            selectedCards = [];
+            matchedCardsCount = 0;
+            playArea.innerHTML = '';
+            matchedCardsArea.innerHTML = ''; // 清空已配對區域
+            showMessage('設定遊戲參數並上傳圖片，然後點擊「開始遊戲」！');
+            
+            // 禁用遊戲中的按鈕
+            drawButton.classList.add('disabled-button');
+            drawButton.disabled = true;
+
+            startGameButton.textContent = '開始遊戲'; // 改變按鈕文字
+            startGameButton.classList.remove('reset-button');
+            startGameButton.classList.add('start-reset-button'); // 改變按鈕樣式
+
+            // 啟用設定輸入框並重置為預設值
+            numAttributesInput.disabled = false;
+            cardsPerAttributeInput.disabled = false;
+            numAttributesInput.value = 13; // 重置為預設值
+            cardsPerAttributeInput.value = 3; // 重置為預設值
+
+            // 顯示設定和圖片上傳區塊
+            settingsArea.classList.remove('hidden');
+            imageUploadArea.classList.remove('hidden');
+            clearAllImages(); // 清除所有已上傳的圖片 (現在只清除記憶體中的)
+            updateButtonStates(); // 確保狀態正確更新
+        }
+
+        /**
+         * 更新所有按鈕和上傳區塊的啟用/禁用狀態
+         */
+        function updateButtonStates() {
+            // 獲取所有單獨文件上傳的 label
+            const uploadLabels = attributeUploadSections.querySelectorAll('label.upload-button');
+            const fileInputs = attributeUploadSections.querySelectorAll('input[type="file"]');
+            
+            if (gameStarted) {
+                fileInputs.forEach(input => input.disabled = true);
+                uploadLabels.forEach(label => label.classList.add('disabled-button')); // 禁用上傳按鈕樣式
+                clearAllImagesButton.disabled = true;
+                clearAllImagesButton.classList.add('disabled-button'); // 禁用清除按鈕樣式
+
+                drawButton.disabled = false;
+                drawButton.classList.remove('disabled-button');
+
+                // 遊戲開始時禁用設定輸入框
+                numAttributesInput.disabled = true;
+                cardsPerAttributeInput.disabled = true;
+
+            } else {
+                fileInputs.forEach(input => input.disabled = false);
+                uploadLabels.forEach(label => label.classList.remove('disabled-button')); // 啟用上傳按鈕樣式
+                clearAllImagesButton.disabled = false;
+                clearAllImagesButton.classList.remove('disabled-button'); // 啟用清除按鈕樣式
+
+                drawButton.disabled = true;
+                drawButton.classList.add('disabled-button');
+
+                // 遊戲未開始時啟用設定輸入框
+                numAttributesInput.disabled = false;
+                cardsPerAttributeInput.disabled = false;
+            }
+        }
+
+        // 確保在 DOM 完全載入後再初始化 DOM 元素和綁定事件
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM 元素初始化
+            drawButton = document.getElementById('draw-button');
+            startGameButton = document.getElementById('start-game-button');
+            playArea = document.getElementById('play-area');
+            messageArea = document.getElementById('message-area');
+            numAttributesInput = document.getElementById('num-attributes');
+            cardsPerAttributeInput = document.getElementById('cards-per-attribute');
+            attributeUploadSections = document.getElementById('attribute-upload-sections');
+            requiredCardsCountSpan = document.getElementById('required-cards-count');
+            clearAllImagesButton = document.getElementById('clear-all-images-button');
+            imageUploadArea = document.getElementById('image-upload-area');
+            settingsArea = document.getElementById('settings-area');
+            matchedCardsArea = document.getElementById('matched-cards-area');
+
+            // 事件監聽器
+            drawButton.addEventListener('click', drawCard);
+            startGameButton.addEventListener('click', () => {
+                if (gameStarted) {
+                    resetGame();
+                } else {
+                    startGame();
+                }
+            });
+
+            // 監聽設定輸入框的變化，以便重新渲染上傳區塊
+            numAttributesInput.addEventListener('change', renderUploadSections);
+            cardsPerAttributeInput.addEventListener('change', renderUploadSections);
+            clearAllImagesButton.addEventListener('click', clearAllImages);
+
+            // 頁面載入時初始化遊戲狀態
+            // 初始載入時，使用預設的屬性數量和每屬性牌數來生成預設圖片
+            currentNumAttributes = parseInt(numAttributesInput.value); // 讀取 HTML 中的初始值
+            currentCardsPerAttribute = parseInt(cardsPerAttributeInput.value); // 讀取 HTML 中的初始值
+            uploadedImages = generateDefaultImages(currentNumAttributes, currentCardsPerAttribute);
+            renderUploadSections(); // 根據載入的圖片渲染上傳區塊
+            updateButtonStates(); // 初始狀態下更新按鈕狀態
+        });
+    </script>
+</body>
+</html>
