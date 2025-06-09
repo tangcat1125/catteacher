@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>抽卡配對遊戲</title>
+  <style>
+    body { background: #f2f2f2; font-family: "Microsoft JhengHei", Arial, sans-serif; }
+    #uploadArea, #gameArea, #hud { margin: 20px auto; max-width: 650px; }
+    #grid { display: grid; grid-template-columns: repeat(3, 120px); grid-gap: 18px; justify-content: center; margin: 30px auto;}
+    .card { width: 120px; height: 120px; background: #ccc; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 36px; cursor: pointer; user-select: none; box-shadow: 1px 2px 8px #bbb;}
+    .flipped { background: #fff; }
+    #hud { text-align: center; margin-top: 30px; }
+    .team { font-size: 26px; font-weight: bold; }
+    .red { color: #e74c3c; }
+    .blue { color: #3498db; }
+    #bottomBtns { margin-top: 28px; }
+    .bigBtn { font-size: 36px; margin: 0 10px; padding: 16px 34px; border-radius: 12px; border: none; background: #ffe4b5; color: #d2691e; font-weight: bold; cursor: pointer; }
+    .bigBtn:active { background: #ffecb3; }
+    #confirmBtn { margin-top: 18px; font-size: 26px; }
+    #gameStartBtn {
+      display: none;
+      margin: 18px auto 0 auto;
+      font-size: 28px;
+      font-weight: bold;
+      background: #ffecb3;
+      color: #d2691e;
+      border: 2px solid #d2691e;
+      border-radius: 10px;
+      padding: 12px 38px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #gameStartBtn:hover { background: #ffe4b5; }
+  </style>
+</head>
+<body>
+  <!-- 老師上傳卡片區 -->
+  <div id="uploadArea">
+    <h2>老師上傳卡片組</h2>
+    <label>組數：</label>
+    <input type="number" id="groupCount" min="3" max="20" value="3" style="width:60px;"> 組
+    <div id="groupInputs"></div>
+    <button id="prepareBtn">準備卡片</button>
+    <button id="gameStartBtn">Game Start</button>
+  </div>
+
+  <!-- 遊戲區 -->
+  <div id="gameArea" style="display:none;">
+    <div id="hud">
+      <span class="team red" id="redScore">紅隊：0</span>
+      <span style="font-size:24px;">|</span>
+      <span class="team blue" id="blueScore">藍隊：0</span>
+      <div id="turnInfo" style="margin-top:10px;font-size:22px;"></div>
+      <div id="retryInfo" style="margin-top:5px;font-size:19px;color:#888;"></div>
+    </div>
+    <div id="grid"></div>
+    <button id="confirmBtn" onclick="confirmTurn()" style="display:none;">確定</button>
+    <div id="bottomBtns"></div>
+  </div>
+
+  <script>
+    // 教育.網頁開發[1]
+
+    // 老師上傳流程
+    const groupInputs = document.getElementById('groupInputs');
+    const groupCountInput = document.getElementById('groupCount');
+    const prepareBtn = document.getElementById('prepareBtn');
+    const gameStartBtn = document.getElementById('gameStartBtn');
+
+    groupCountInput.oninput = function(){
+      groupInputs.innerHTML = '';
+      let n = Math.max(3, Math.min(20, parseInt(this.value)));
+      for(let i=0;i<n;i++){
+        groupInputs.innerHTML += `
+          <div style="margin:8px 0;">
+            <label>第${i+1}組屬性：</label>
+            <input type="text" id="attr${i}" required style="width:80px;">
+            <input type="file" id="img${i}" accept="image/*" required>
+          </div>`;
+      }
+    };
+    groupCountInput.oninput();
+
+    // 遊戲資料結構
+    let cardGroups = [], cards = [];
+    let redScore = 0, blueScore = 0, turn = 0; // 0:紅, 1:藍
+    let retryLeft = [2,2]; // 每隊剩餘重來次數
+    let flipped = [], canClick = true, gameStarted = false;
+    let totalRounds = 10, playedRounds = 0;
+
+    prepareBtn.onclick = function(){
+      // 讀取上傳資料
+      cardGroups = [];
+      let n = Math.max(3, Math.min(20, parseInt(groupCountInput.value)));
+      let pending = n;
+      for(let i=0;i<n;i++){
+        let attr = document.getElementById('attr'+i).value.trim();
+        let imgInput = document.getElementById('img'+i);
+        if(!attr || !imgInput.files[0]){ alert('每組都要輸入屬性和圖片！'); return; }
+        let reader = new FileReader();
+        reader.onload = (function(attr, i, total){
+          return function(e){
+            cardGroups[i] = {attr: attr, img: e.target.result};
+            pending--;
+            if(pending === 0){
+              prepareBtn.style.display = "none";
+              gameStartBtn.style.display = "";
+              alert("卡片準備完成，請老師檢查，然後按下 Game Start 開始遊戲！");
+            }
+          }
+        })(attr, i, n);
+        reader.readAsDataURL(imgInput.files[0]);
+      }
+    };
+
+    gameStartBtn.onclick = function(){
+      gameStarted = true;
+      document.getElementById('uploadArea').style.display = 'none';
+      document.getElementById('gameArea').style.display = '';
+      initGame();
+    };
+
+    function initGame(){
+      redScore = blueScore = 0;
+      turn = 0;
+      retryLeft = [2,2];
+      playedRounds = 0;
+      nextRound();
+    }
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        let j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+      }
+      return arr;
+    }
+
+    function nextRound(){
+      playedRounds++;
+      // 九宮格隨機抽選
+      cards = [];
+      let chosen = shuffle(cardGroups.slice()).slice(0, 3); // 九宮格每次三組各三張
+      let temp = [];
+      for(let g of chosen){
+        for(let i=0;i<3;i++) temp.push({attr:g.attr, img:g.img, group:g});
+      }
+      cards = shuffle(temp);
+      drawGrid();
+      flipped = [];
+      canClick = true;
+      document.getElementById('confirmBtn').style.display = 'none';
+      updateHud();
+      drawBottomBtns();
+    }
+
+    function drawGrid(){
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      for(let i=0;i<9;i++){
+        let div = document.createElement('div');
+        div.className = 'card';
+        div.onclick = ()=>flipCard(i);
+        div.innerHTML = '<span style="color:#888;">?</span>';
+        grid.appendChild(div);
+      }
+    }
+
+    function drawBottomBtns(){
+      // 讓個子矮的學生也能選
+      const bottom = document.getElementById('bottomBtns');
+      bottom.innerHTML = '';
+      for(let i=0;i<9;i++){
+        let btn = document.createElement('button');
+        btn.className = 'bigBtn';
+        btn.textContent = (i+1);
+        btn.onclick = ()=>flipCard(i);
+        bottom.appendChild(btn);
+      }
+    }
+
+    function flipCard(idx){
+      if(!gameStarted) return;
+      if(!canClick) return;
+      const grid = document.getElementById('grid');
+      if(flipped.includes(idx)) return;
+      if(flipped.length===2) return;
+      flipped.push(idx);
+      let card = grid.children[idx];
+      card.classList.add('flipped');
+      card.innerHTML = `<img src="${cards[idx].img}" alt="" style="max-width:100px;max-height:100px;"><br><span style="font-size:17px;">${cards[idx].attr}</span>`;
+      if(flipped.length===2){
+        canClick = false;
+        document.getElementById('confirmBtn').style.display = '';
+      }
+    }
+
+    function confirmTurn(){
+      if(!gameStarted) return;
+      const [a,b] = flipped;
+      if(cards[a].attr === cards[b].attr){
+        // 配對成功
+        if(turn===0) redScore++; else blueScore++;
+        updateHud();
+        setTimeout(()=>{
+          alert('配對成功！得一分');
+          nextTurn();
+        }, 350);
+      }else{
+        // 配對失敗
+        retryLeft[turn]--;
+        updateHud();
+        setTimeout(()=>{
+          // 全部翻開提示
+          showAllCards();
+          setTimeout(()=>{
+            if(retryLeft[turn]>0){
+              alert('配對錯誤，全部卡片已翻開提示，還有'+retryLeft[turn]+'次重來機會');
+              nextRound();
+            }else{
+              alert('配對錯誤，已用完重來機會，換隊！');
+              nextTurn();
+            }
+          }, 1200);
+        }, 350);
+      }
+    }
+
+    function showAllCards(){
+      const grid = document.getElementById('grid');
+      for(let i=0;i<9;i++){
+        grid.children[i].classList.add('flipped');
+        grid.children[i].innerHTML = `<img src="${cards[i].img}" alt="" style="max-width:100px;max-height:100px;"><br><span style="font-size:17px;">${cards[i].attr}</span>`;
+      }
+    }
+
+    function nextTurn(){
+      turn = 1-turn;
+      flipped = [];
+      canClick = true;
+      document.getElementById('confirmBtn').style.display = 'none';
+      // 結束條件：可依需求調整
+      if(playedRounds >= totalRounds){
+        setTimeout(()=>{
+          let msg = `遊戲結束！\n紅隊${redScore}分，藍隊${blueScore}分。\n${redScore>blueScore?'紅隊獲勝！':redScore<blueScore?'藍隊獲勝！':'平手！'}`;
+          alert(msg);
+          location.reload();
+        }, 500);
+      }else{
+        nextRound();
+      }
+    }
+
+    function updateHud(){
+      document.getElementById('redScore').textContent = `紅隊：${redScore}`;
+      document.getElementById('blueScore').textContent = `藍隊：${blueScore}`;
+      document.getElementById('turnInfo').innerHTML = (turn===0?'<span class="red">紅隊進行中</span>':'<span class="blue">藍隊進行中</span>');
+      document.getElementById('retryInfo').textContent = `本隊剩餘重來次數：${retryLeft[turn]}`;
+    }
+  </script>
+</body>
+</html>
