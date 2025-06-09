@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>沙灘排球遊戲</title>
+  <style>
+    body { background: #ffe4b5; }
+    canvas { background: #ffe4b5; display: block; margin: 0 auto; border: 2px solid #aaa; }
+    #hud {
+      text-align:center; 
+      margin-bottom:10px;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+    }
+    #scoreRed, #scoreBlue {
+      font-size:32px; font-weight:bold; padding:0 10px;
+    }
+    #scoreRed { color:red; }
+    #scoreBlue { color:blue; }
+    #gameStatus {
+      font-size:22px; color:#333; margin-top:5px; min-height:28px;
+    }
+    #controls {
+      text-align:center; 
+      margin-top:10px; 
+      font-size:20px; 
+      color:#d2691e; 
+      font-weight:bold;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      background: #fffbe4;
+      border-radius: 10px;
+      padding: 6px 0;
+      width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <span style="color:red; font-weight:bold;">我方（紅）</span>
+    <span id="scoreRed">0</span>
+    <span style="font-size:28px;"> : </span>
+    <span id="scoreBlue">0</span>
+    <span style="color:blue; font-weight:bold;">敵方（藍）</span>
+    <div id="gameStatus"></div>
+  </div>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="controls">
+    操作說明：<br>
+    <span style="color:#0077cc;">← →</span> 左右移動 &nbsp;|&nbsp; 
+    <span style="color:#0077cc;">↑</span> 托球 &nbsp;|&nbsp; 
+    <span style="color:#0077cc;">空白鍵</span> 殺球/發球 &nbsp;|&nbsp; 
+    <span style="color:#0077cc;">連按兩次 ← 或 →</span> 飛撲救球
+  </div>
+  <script>
+    // 畫布與遊戲參數
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const NET_X = W/2, NET_Y = H-120, NET_W = 8, NET_H = 120;
+    const GROUND_Y = H-40;
+    const PLAYER_SIZE = 32;
+    const BALL_RADIUS = 12;
+    const TEAM_SIZE = 3;
+    const SCORE_TO_WIN = 3;
+
+    // 角色起始位置
+    const positions = [
+      [W/4, GROUND_Y-PLAYER_SIZE],      // 玩家
+      [W/4-60, GROUND_Y-PLAYER_SIZE],   // 隊友1
+      [W/4+60, GROUND_Y-PLAYER_SIZE],   // 隊友2
+      [W*3/4, GROUND_Y-PLAYER_SIZE],    // 敵1
+      [W*3/4-60, GROUND_Y-PLAYER_SIZE], // 敵2
+      [W*3/4+60, GROUND_Y-PLAYER_SIZE]  // 敵3
+    ];
+
+    // 角色物件
+    let players = [];
+    for(let i=0;i<TEAM_SIZE*2;i++){
+      players.push({
+        x: positions[i][0], y: positions[i][1],
+        vx: 0, vy: 0,
+        color: i==0 ? 'red' : (i<TEAM_SIZE ? 'pink' : 'blue'),
+        isPlayer: i==0, isAI: i!=0,
+        jump: false, onGround: true,
+        isSetting: false, isSpiking: false, isDiving: false, diveTimer: 0
+      });
+    }
+
+    // 球物件
+    let ball = {
+      x: NET_X, y: GROUND_Y-120, vx: 3, vy: -5, lastTouch: null
+    };
+
+    // 分數、狀態
+    let score = [0,0];
+    let servingTeam = 0; // 0:我方, 1:敵方
+    let gameOver = false;
+    let statusText = "";
+
+    // 控制
+    let keys = {};
+    let lastKey = null;
+    let keyCount = 0;
+    let lastKeyTime = 0;
+
+    document.addEventListener('keydown', e=>{
+      keys[e.key] = true;
+      // 飛撲偵測
+      if(e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        let now = Date.now();
+        if(lastKey === e.key && now - lastKeyTime < 300) {
+          keyCount++;
+        } else {
+          keyCount = 1;
+        }
+        lastKey = e.key;
+        lastKeyTime = now;
+      }
+    });
+    document.addEventListener('keyup', e=>{
+      keys[e.key] = false;
+    });
+
+    // 發球
+    function serve(team){
+      if(team==0){
+        ball.x = players[0].x+20;
+        ball.y = players[0].y-10;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.lastTouch = 0;
+        statusText = "請按空白鍵發球！";
+      }else{
+        ball.x = players[TEAM_SIZE].x-20;
+        ball.y = players[TEAM_SIZE].y-10;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.lastTouch = TEAM_SIZE;
+        statusText = "敵方發球中...";
+        setTimeout(()=>{
+          ball.vx = -4;
+          ball.vy = -5;
+          statusText = "比賽中";
+        }, 900);
+      }
+      updateHud();
+    }
+
+    // 碰撞檢查
+    function collideBall(p){
+      let dx = ball.x - (p.x+PLAYER_SIZE/2);
+      let dy = ball.y - (p.y+PLAYER_SIZE/2);
+      let dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist < BALL_RADIUS+PLAYER_SIZE/2){
+        // 玩家動作決定球的反應
+        if(p.isPlayer) {
+          // 殺球
+          if(p.isSpiking) {
+            ball.vx = (ball.x < NET_X ? 1 : -1) * 8 + (Math.random()-0.5)*2;
+            ball.vy = -10;
+            statusText = "殺球！";
+          }
+          // 托球
+          else if(p.isSetting) {
+            ball.vx = (ball.x < NET_X ? 1 : -1) * 2 + (Math.random()-0.5)*1;
+            ball.vy = -8;
+            statusText = "托球！";
+          }
+          // 飛撲
+          else if(p.isDiving) {
+            ball.vx = (ball.x < NET_X ? 1 : -1) * 10;
+            ball.vy = -5;
+            statusText = "飛撲救球！";
+          }
+          // 一般碰撞
+          else {
+            let angle = Math.atan2(dy, dx);
+            ball.vx = Math.cos(angle)*6 + (Math.random()-0.5)*2;
+            ball.vy = Math.sin(angle)*6 - 2;
+            statusText = "碰到球了！";
+          }
+        } else {
+          // AI簡單動作
+          ball.vx = (p.x < NET_X ? 1 : -1) * 5 + (Math.random()-0.5)*2;
+          ball.vy = -7;
+        }
+        ball.lastTouch = players.indexOf(p);
+        updateHud();
+      }
+    }
+
+    // AI 控制
+    function aiMove(p, idx){
+      let team = idx<TEAM_SIZE ? 0 : 1;
+      let sideMin = team==0 ? 0 : NET_X+NET_W/2;
+      let sideMax = team==0 ? NET_X-NET_W/2 : W;
+      // 只追球在自己半場
+      if((team==0 && ball.x < NET_X) || (team==1 && ball.x > NET_X)){
+        if(Math.abs((p.x+PLAYER_SIZE/2)-ball.x) > 10){
+          if(ball.x < p.x+PLAYER_SIZE/2 && p.x > sideMin) p.vx = -2;
+          else if(ball.x > p.x+PLAYER_SIZE/2 && p.x+PLAYER_SIZE < sideMax) p.vx = 2;
+          else p.vx = 0;
+        }else{
+          p.vx = 0;
+        }
+        // 跳球
+        if(ball.y < p.y && Math.abs((p.x+PLAYER_SIZE/2)-ball.x)<30 && p.onGround){
+          p.vy = -8;
+          p.onGround = false;
+        }
+      }else{
+        // 回到原位
+        let home = positions[idx][0];
+        if(Math.abs(p.x-home)>5){
+          p.vx = (home-p.x)/20;
+        }else{
+          p.vx = 0;
+        }
+      }
+    }
+
+    // 玩家控制
+    function playerMove(p){
+      // 左右移動
+      p.vx = 0;
+      if(keys["ArrowLeft"] && p.x>0) p.vx = -3;
+      if(keys["ArrowRight"] && p.x+PLAYER_SIZE<W/2-NET_W/2) p.vx = 3;
+
+      // 上鍵托球
+      p.isSetting = !!keys["ArrowUp"];
+
+      // 空白鍵殺球或發球
+      p.isSpiking = !!keys[" "];
+
+      // 發球狀態
+      if(servingTeam === 0 && ball.vx === 0 && ball.vy === 0 && p.isSpiking){
+        ball.vx = 4;
+        ball.vy = -5;
+        statusText = "比賽中";
+        updateHud();
+      }
+
+      // 飛撲救球
+      if((keyCount >= 2) && (lastKey === "ArrowLeft" || lastKey === "ArrowRight") && p.onGround) {
+        p.isDiving = true;
+        p.diveTimer = 10; // 飛撲持續時間
+        p.vx = (lastKey === "ArrowLeft" ? -8 : 8);
+        p.vy = -3;
+        keyCount = 0;
+      } else if(p.diveTimer > 0) {
+        p.diveTimer--;
+        if(p.diveTimer === 0) p.isDiving = false;
+      } else {
+        p.isDiving = false;
+      }
+    }
+
+    // 更新HUD
+    function updateHud(){
+      document.getElementById('scoreRed').textContent = score[0];
+      document.getElementById('scoreBlue').textContent = score[1];
+      let t = "";
+      if(gameOver){
+        t = score[0]>score[1] ? "🎉 你贏了！" : "😢 你輸了！";
+      } else if(servingTeam === 0 && ball.vx === 0 && ball.vy === 0) {
+        t = "我方發球，請按空白鍵發球";
+      } else if(servingTeam === 1 && ball.vx === 0 && ball.vy === 0) {
+        t = "敵方發球中...";
+      } else {
+        t = statusText || "比賽中";
+      }
+      document.getElementById('gameStatus').textContent = t;
+    }
+
+    // 更新遊戲
+    function update(){
+      if(gameOver) return;
+      // 玩家與AI移動
+      for(let i=0;i<players.length;i++){
+        let p = players[i];
+        if(p.isPlayer) playerMove(p);
+        else aiMove(p, i);
+        // 移動
+        p.x += p.vx;
+        // 邊界
+        let left = i<TEAM_SIZE ? 0 : NET_X+NET_W/2;
+        let right = i<TEAM_SIZE ? NET_X-NET_W/2-PLAYER_SIZE : W-PLAYER_SIZE;
+        if(p.x<left) p.x=left;
+        if(p.x>right) p.x=right;
+        // 跳躍
+        p.y += p.vy;
+        if(!p.onGround) p.vy += 0.6; // 重力
+        if(p.y > GROUND_Y-PLAYER_SIZE){
+          p.y = GROUND_Y-PLAYER_SIZE;
+          p.vy = 0;
+          p.onGround = true;
+        }
+      }
+
+      // 球物理
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      ball.vy += 0.4; // 重力
+      // 球與地面
+      if(ball.y > GROUND_Y-BALL_RADIUS){
+        ball.y = GROUND_Y-BALL_RADIUS;
+        ball.vy *= -0.5;
+        // 判斷失分
+        let loseTeam = ball.x < NET_X ? 0 : 1;
+        score[1-loseTeam]++;
+        statusText = (loseTeam === 0 ? "敵方得分！" : "我方得分！");
+        updateHud();
+        if(score[0]>=SCORE_TO_WIN || score[1]>=SCORE_TO_WIN){
+          gameOver = true;
+          updateHud();
+        }else{
+          servingTeam = 1-loseTeam;
+          setTimeout(()=>{ serve(servingTeam); }, 1200);
+        }
+        return;
+      }
+      // 球與左右牆
+      if(ball.x < BALL_RADIUS){ ball.x = BALL_RADIUS; ball.vx *= -1; }
+      if(ball.x > W-BALL_RADIUS){ ball.x = W-BALL_RADIUS; ball.vx *= -1; }
+      // 球與網
+      if(ball.x > NET_X-NET_W/2-BALL_RADIUS && ball.x < NET_X+NET_W/2+BALL_RADIUS &&
+         ball.y+BALL_RADIUS > NET_Y){
+        // 撞到網子
+        if(ball.x < NET_X) ball.x = NET_X-NET_W/2-BALL_RADIUS;
+        else ball.x = NET_X+NET_W/2+BALL_RADIUS;
+        ball.vx *= -0.7;
+      }
+      // 球與角色
+      for(let p of players){
+        collideBall(p);
+      }
+      // 球出邊線
+      if(ball.x < 0 || ball.x > W){
+        let loseTeam = ball.x < NET_X ? 0 : 1;
+        score[1-loseTeam]++;
+        statusText = (loseTeam === 0 ? "敵方得分！" : "我方得分！");
+        updateHud();
+        if(score[0]>=SCORE_TO_WIN || score[1]>=SCORE_TO_WIN){
+          gameOver = true;
+          updateHud();
+        }else{
+          servingTeam = 1-loseTeam;
+          setTimeout(()=>{ serve(servingTeam); }, 1200);
+        }
+        return;
+      }
+    }
+
+    // 畫面
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      // 沙灘
+      ctx.fillStyle = "#ffe4b5";
+      ctx.fillRect(0,GROUND_Y,W,H-GROUND_Y);
+      // 邊線
+      ctx.strokeStyle = "#d2691e";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0,GROUND_Y);
+      ctx.lineTo(W,GROUND_Y);
+      ctx.moveTo(0,GROUND_Y-160);
+      ctx.lineTo(W,GROUND_Y-160);
+      ctx.moveTo(0,GROUND_Y);
+      ctx.lineTo(0,GROUND_Y-160);
+      ctx.moveTo(W,GROUND_Y);
+      ctx.lineTo(W,GROUND_Y-160);
+      ctx.stroke();
+      // 網子
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(NET_X-NET_W/2, NET_Y, NET_W, NET_H);
+      // 角色
+      for(let i=0;i<players.length;i++){
+        let p = players[i];
+        ctx.beginPath();
+        ctx.arc(p.x+PLAYER_SIZE/2, p.y+PLAYER_SIZE/2, PLAYER_SIZE/2, 0, 2*Math.PI);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.strokeStyle = "#333";
+        ctx.stroke();
+        // 飛撲特效
+        if(p.isDiving) {
+          ctx.save();
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = "#888";
+          ctx.fillRect(p.x, p.y+PLAYER_SIZE, PLAYER_SIZE, 8);
+          ctx.restore();
+        }
+      }
+      // 球
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, 2*Math.PI);
+      ctx.fillStyle = "#fff200";
+      ctx.fill();
+      ctx.strokeStyle = "#333";
+      ctx.stroke();
+    }
+
+    // 遊戲主循環
+    function loop(){
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // 開始遊戲
+    serve(servingTeam);
+    loop();
+    updateHud();
+  </script>
+</body>
+</html>
