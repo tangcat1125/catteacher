@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>筱嵐的數位漢餅舖：分數切切樂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FFF8E7;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .bg-pattern {
+            background-image: radial-gradient(#F4A261 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        @keyframes bounce-in {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        .anim-bounce { animation: bounce-in 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000) both; }
+        
+        @keyframes flash-green {
+            0% { background-color: rgba(158, 240, 26, 0); }
+            30% { background-color: rgba(158, 240, 26, 0.4); }
+            100% { background-color: rgba(158, 240, 26, 0); }
+        }
+        .flash-effect { animation: flash-green 0.6s ease-out; }
+
+        @keyframes hand-guide-move {
+            0% { transform: translate(0, 0); }
+            50% { transform: translate(10px, 10px); }
+            100% { transform: translate(0, 0); }
+        }
+        .hand-anim {
+            animation: hand-guide-move 1.5s infinite ease-in-out;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3));
+        }
+
+        /* 示範模式的閃爍特效 (藍色) */
+        @keyframes flash-blue {
+            0% { background-color: rgba(59, 130, 246, 0); }
+            50% { background-color: rgba(59, 130, 246, 0.3); }
+            100% { background-color: rgba(59, 130, 246, 0); }
+        }
+        .demo-effect { animation: flash-blue 1.0s ease-in-out infinite; }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <div class="absolute inset-0 bg-pattern -z-10"></div>
+    <div id="flash-layer" class="fixed inset-0 pointer-events-none z-50 hidden"></div>
+
+    <!-- Header -->
+    <header id="question-header" class="w-full bg-white/80 backdrop-blur-md shadow-lg z-20 relative rounded-b-3xl border-b-4 border-blue-200 pb-4 pt-2 transition-all duration-200 ease-out">
+        <div class="absolute top-2 left-2 flex items-center gap-2">
+            <div class="w-12 h-12 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center text-2xl">👧🏻</div>
+            <div class="bg-white/90 rounded-lg px-3 py-1 shadow-sm border-l-4 border-blue-400">
+                <div class="text-[10px] text-gray-400 font-bold leading-none">SCORE</div>
+                <div id="score-display" class="text-xl font-black text-blue-600 leading-none">0</div>
+            </div>
+        </div>
+        <div class="absolute top-2 right-2 bg-white/90 rounded-lg px-3 py-1 shadow-sm border-r-4 border-orange-400 text-right">
+            <div class="text-[10px] text-gray-400 font-bold leading-none">LEVEL</div>
+            <div id="level-display" class="text-xl font-black text-orange-600 leading-none">1/10</div>
+        </div>
+
+        <div class="max-w-2xl mx-auto text-center px-4 mt-14 md:mt-12">
+            <h2 id="question-text" class="text-lg md:text-2xl font-bold text-gray-800 mb-2 leading-tight min-h-[1.5em]">
+                題目載入中...
+            </h2>
+            <p id="hint-text" class="text-sm text-blue-500 font-bold inline-block bg-blue-50 px-3 py-1 rounded-full">
+                <i class="fas fa-info-circle mr-1"></i> 準備開始
+            </p>
+            <div class="w-full max-w-xs mx-auto h-2 bg-gray-200 rounded-full mt-3 overflow-hidden relative">
+                <div id="timer-bar" class="h-full bg-green-500 w-full"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Canvas Area -->
+    <main id="canvas-container" class="flex-1 relative w-full overflow-hidden flex items-center justify-center">
+        <canvas id="gameCanvas" class="absolute z-10 cursor-pointer touch-none"></canvas>
+
+        <div id="hand-guide" class="absolute z-30 pointer-events-none transition-opacity duration-300 opacity-0 flex flex-col items-center">
+            <div class="text-5xl text-white drop-shadow-md hand-anim transform rotate-45">
+                <i class="fas fa-hand-pointer text-blue-600 border-white stroke-white" style="text-shadow: 2px 2px 0 #FFF, -1px -1px 0 #FFF, 1px -1px 0 #FFF, -1px 1px 0 #FFF, 1px 1px 0 #FFF;"></i>
+            </div>
+            <div class="mt-2 bg-blue-600 text-white text-xs md:text-sm font-bold px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap arrow-top">
+                按住這裡轉動！
+            </div>
+        </div>
+        
+        <div class="absolute bottom-4 z-0 pointer-events-none text-center opacity-40 w-full px-4">
+            <p class="text-gray-500 font-bold text-xs bg-white/40 backdrop-blur-sm px-3 py-1 rounded-full inline-block">
+                拖曳圓周上的藍點來切分
+            </p>
+        </div>
+    </main>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl transform scale-90 transition-transform duration-300 border-4 border-yellow-400 relative overflow-hidden">
+            <div id="trophy-container" class="mb-2 text-6xl hidden animate-bounce">🏆</div>
+            <h2 class="text-2xl md:text-3xl font-black text-gray-800 mb-1">測驗結束!</h2>
+            <div class="text-gray-500 text-sm mb-4">辛苦了，來看看成績吧</div>
+            <div class="text-5xl md:text-6xl font-black text-blue-600 mb-6" id="final-score">0</div>
+            <div class="space-y-3">
+                 <div class="relative">
+                    <i class="fas fa-id-card absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="number" id="seat-input" placeholder="請輸入座號 (例如: 05)" class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl pl-12 pr-4 py-3 text-lg font-bold focus:outline-none focus:border-blue-500 transition-colors text-center">
+                 </div>
+                <button onclick="submitScore()" class="w-full bg-gradient-to-b from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all text-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle mr-2"></i> 送出成績並重來
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOTAL_TIME = 20;
+        
+        const QUESTIONS = [
+            { text: "【暖身】媽媽買了一個披薩，打算平分給 3 個人(1/3)。請切出 3 等分。", target: 3, hint: "目標：3 等分" },
+            { text: "【擴分 1】這是一塊 1/2 個蔥油餅。如果要分給 4 個人，必須切得更細，變成 2/4。", target: 4, hint: "把 1/2 擴分為 2/4 (4等分)" },
+            { text: "【擴分 2】客人變多了！請把原本的 1/3 個蛋糕，利用擴分切成 2/6 個。", target: 6, hint: "把 1/3 擴分為 2/6 (6等分)" },
+            { text: "【擴分 3】西瓜太大了！把 1/4 個西瓜切成 2/8，這樣大家比較好拿。", target: 8, hint: "把 1/4 擴分為 2/8 (8等分)" },
+            { text: "【擴分 4】老師要發色紙。請把 1/2 張色紙切成 5/10 (切成10小條) 發給同學。", target: 10, hint: "把 1/2 擴分為 5/10 (10等分)" },
+            { text: "【約分 1】盤子上有 2/4 個餅。如果我們把小塊合併，其實它就等於 1/2 個。", target: 2, hint: "把 2/4 約分為 1/2 (2等分)" },
+            { text: "【約分 2】這裡有 3/9 盒喜餅。請試著把它約分，切出最簡分數 1/3 的樣子。", target: 3, hint: "把 3/9 約分為 1/3 (3等分)" },
+            { text: "【約分 3】眼力大考驗！2/8 個大餅，約分後其實跟 1/4 個是一樣大的。", target: 4, hint: "把 2/8 約分為 1/4 (4等分)" },
+            { text: "【通分挑戰】弟弟吃 1/2，妹妹吃 1/3，要切成幾份才能公平比較誰多誰少？", target: 6, hint: "找出 2 和 3 的公倍數" },
+            { text: "【終極題】最後一關！請切出 1/3 和 1/4 的公分母，讓大家都能分到餅。", target: 12, hint: "找出 3 和 4 的公倍數 (12等分)" }
+        ];
+
+        let canvas, ctx, canvasContainer, header, handGuide;
+        let width, height, centerX, centerY, radius;
+        let currentLevel = 0;
+        let score = 0;
+        let timeLeft = TOTAL_TIME;
+        let gameActive = false;
+        let isInputLocked = false; // 新增：控制是否鎖定輸入
+        let isDragging = false;
+        let currentSlices = 1;
+        let timerInterval, animationId, resizeObserver;
+        let dragAngle = 0;
+        let demoInterval; // 示範動畫的 timer
+
+        window.onload = initGame;
+
+        function initGame() {
+            canvas = document.getElementById('gameCanvas');
+            canvasContainer = document.getElementById('canvas-container');
+            header = document.getElementById('question-header');
+            handGuide = document.getElementById('hand-guide');
+            ctx = canvas.getContext('2d');
+            
+            bindEvents();
+            setupResizeObserver();
+            resize(); 
+
+            startGame();
+        }
+
+        function bindEvents() {
+            canvas.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', onDrag);
+            window.addEventListener('mouseup', endDrag);
+            canvas.addEventListener('touchstart', startDrag, { passive: false });
+            window.addEventListener('touchmove', onDrag, { passive: false });
+            window.addEventListener('touchend', endDrag);
+        }
+
+        function setupResizeObserver() {
+            resizeObserver = new ResizeObserver(() => resize());
+            resizeObserver.observe(header);
+            window.addEventListener('resize', resize);
+        }
+
+        function resize() {
+            width = canvasContainer.clientWidth;
+            height = canvasContainer.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2;
+            radius = Math.min(width, height) * 0.4;
+            if (radius > 280) radius = 280;
+            if (radius < 120) radius = 120; 
+            updateHandGuidePosition();
+            if (!gameActive && currentLevel > 0) drawLoop();
+        }
+
+        function updateHandGuidePosition() {
+            const startX = centerX + radius;
+            const startY = centerY;
+            handGuide.style.left = (startX - 10) + 'px'; 
+            handGuide.style.top = (startY + 10) + 'px'; 
+        }
+
+        function startGame() {
+            currentLevel = 0;
+            score = 0;
+            updateHUD();
+            hideEndScreen();
+            loadLevel(0);
+            gameActive = true;
+            cancelAnimationFrame(animationId);
+            animationId = requestAnimationFrame(drawLoop);
+        }
+
+        function loadLevel(idx) {
+            if (idx >= QUESTIONS.length) {
+                endGame();
+                return;
+            }
+            currentLevel = idx;
+            timeLeft = TOTAL_TIME;
+            currentSlices = 1;
+            isDragging = false;
+            isInputLocked = false; // 解鎖輸入
+            
+            const q = QUESTIONS[idx];
+            document.getElementById('question-text').innerText = q.text;
+            document.getElementById('question-text').className = "text-lg md:text-2xl font-bold text-gray-800 mb-2 leading-tight min-h-[1.5em]"; // Reset color
+            document.getElementById('hint-text').innerHTML = `<i class='fas fa-info-circle mr-1'></i> ${q.hint}`;
+            
+            // 重置 Header 樣式
+            header.className = "w-full bg-white/80 backdrop-blur-md shadow-lg z-20 relative rounded-b-3xl border-b-4 border-blue-200 pb-4 pt-2 transition-all duration-200 ease-out";
+
+            updateHUD();
+            updateTimerBar(); 
+            showHandGuide();
+
+            clearInterval(timerInterval);
+            clearInterval(demoInterval); // 確保清除舊的示範
+            timerInterval = setInterval(gameTick, 100);
+        }
+
+        function showHandGuide() {
+            updateHandGuidePosition();
+            handGuide.classList.remove('opacity-0');
+        }
+
+        function hideHandGuide() {
+            handGuide.classList.add('opacity-0');
+        }
+
+        function gameTick() {
+            if (isInputLocked) return; // 鎖定時停止計時
+            timeLeft -= 0.1;
+            updateTimerBar();
+            if (timeLeft <= 0.01) { 
+                handleTimeUp();
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('level-display').innerText = `${currentLevel + 1}/${QUESTIONS.length}`;
+        }
+
+        function updateTimerBar() {
+            const pct = Math.max(0, (timeLeft / TOTAL_TIME) * 100);
+            const bar = document.getElementById('timer-bar');
+            bar.style.width = `${pct}%`;
+            if (pct > 50) bar.className = "h-full bg-green-500 transition-all duration-100 ease-linear";
+            else if (pct > 25) bar.className = "h-full bg-yellow-400 transition-all duration-100 ease-linear";
+            else bar.className = "h-full bg-red-500 transition-all duration-100 ease-linear";
+        }
+
+        // --- 核心修改：時間到的處理邏輯 ---
+        function handleTimeUp() {
+            clearInterval(timerInterval);
+            isInputLocked = true; // 鎖定輸入
+            isDragging = false;
+            hideHandGuide(); // 隱藏手指
+
+            // UI 提示
+            header.classList.add('bg-blue-50', 'border-blue-400');
+            document.getElementById('question-text').innerHTML = "<span class='text-blue-600'><i class='fas fa-chalkboard-teacher'></i> 時間到！筱嵐來示範正確答案...</span>";
+            
+            // 延遲一下開始示範
+            setTimeout(() => {
+                startAutoSolve();
+            }, 800);
+        }
+
+        function startAutoSolve() {
+            const target = QUESTIONS[currentLevel].target;
+            
+            // 建立示範動畫 Interval
+            demoInterval = setInterval(() => {
+                // 自動逼近目標
+                if (currentSlices < target) {
+                    currentSlices++;
+                } else if (currentSlices > target) {
+                    currentSlices--;
+                } else {
+                    // 達到目標
+                    clearInterval(demoInterval);
+                    showDemoSuccess();
+                }
+            }, 300); // 每 0.3 秒切一刀
+        }
+
+        function showDemoSuccess() {
+            // 視覺特效：藍色閃爍 (區別於答對的綠色)
+            const flash = document.getElementById('flash-layer');
+            flash.classList.remove('hidden');
+            flash.classList.add('demo-effect'); // 使用 demo-effect
+
+            document.getElementById('question-text').innerHTML = `<span class='text-blue-800 font-bold'>看！正確答案是 ${currentSlices} 等分喔！</span>`;
+            
+            // 3秒後進入下一題
+            setTimeout(() => {
+                flash.classList.add('hidden');
+                flash.classList.remove('demo-effect');
+                loadLevel(currentLevel + 1);
+            }, 3000);
+        }
+
+        // --- 互動邏輯 ---
+        function getEventPos(e) {
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault(); 
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startDrag(e) {
+            if (!gameActive || isInputLocked) return; // 鎖定時無法操作
+            const pos = getEventPos(e);
+            const dist = Math.sqrt((pos.x - centerX)**2 + (pos.y - centerY)**2);
+            if (dist < radius * 1.5) {
+                isDragging = true;
+                hideHandGuide();
+                updateSlices(pos.x, pos.y);
+            }
+        }
+
+        function onDrag(e) {
+            if (!isDragging || !gameActive || isInputLocked) return;
+            const pos = getEventPos(e);
+            updateSlices(pos.x, pos.y);
+        }
+
+        function endDrag() {
+            if (isDragging && gameActive && !isInputLocked) {
+                isDragging = false;
+                checkAnswer();
+            }
+        }
+
+        function updateSlices(mx, my) {
+            let angle = Math.atan2(my - centerY, mx - centerX);
+            if (angle < 0) angle += Math.PI * 2;
+            dragAngle = angle;
+
+            let rawSlices = (angle / (Math.PI * 2)) * 12;
+            let slices = Math.ceil(rawSlices + 0.1); 
+            
+            if (slices < 1) slices = 1;
+            if (slices > 12) slices = 12;
+            
+            const dist = Math.sqrt((mx - centerX)**2 + (my - centerY)**2);
+            if (dist < radius * 0.2) slices = 1;
+
+            currentSlices = slices;
+        }
+
+        function checkAnswer() {
+            if (isInputLocked) return;
+            const target = QUESTIONS[currentLevel].target;
+            if (currentSlices === target) {
+                successEffect();
+            }
+        }
+
+        function successEffect() {
+            clearInterval(timerInterval);
+            isInputLocked = true; // 答對也鎖定，防止亂切
+            
+            const timeBonus = Math.ceil(timeLeft * 10);
+            score += (100 + timeBonus);
+            updateHUD();
+
+            const flash = document.getElementById('flash-layer');
+            flash.classList.remove('hidden');
+            flash.classList.add('flash-effect');
+            
+            document.getElementById('question-text').innerHTML = "<span class='text-green-600'>🎉 太棒了！答對了！</span>";
+            header.classList.add('border-green-400', 'bg-green-50');
+            
+            setTimeout(() => {
+                flash.classList.add('hidden');
+                flash.classList.remove('flash-effect');
+                loadLevel(currentLevel + 1);
+            }, 1200);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            clearInterval(demoInterval);
+            showEndScreen();
+        }
+
+        function showEndScreen() {
+            const modal = document.getElementById('end-screen');
+            const content = modal.querySelector('div');
+            const trophy = document.getElementById('trophy-container');
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.add('opacity-100');
+            content.classList.add('scale-100');
+
+            document.getElementById('final-score').innerText = score;
+            if (score >= 900) { 
+                trophy.classList.remove('hidden');
+            } else {
+                trophy.classList.add('hidden');
+            }
+        }
+
+        function hideEndScreen() {
+             const modal = document.getElementById('end-screen');
+             const content = modal.querySelector('div');
+             modal.classList.remove('opacity-100');
+             content.classList.remove('scale-100');
+             setTimeout(() => {
+                 modal.classList.add('hidden');
+                 document.getElementById('seat-input').value = ''; 
+             }, 300);
+        }
+
+        function submitScore() {
+            const seat = document.getElementById('seat-input').value.trim();
+            if (!seat) {
+                const input = document.getElementById('seat-input');
+                input.classList.add('border-red-500', 'animate-pulse');
+                setTimeout(() => input.classList.remove('border-red-500', 'animate-pulse'), 1000);
+                return;
+            }
+            console.log(`Submitting score: Seat ${seat}, Score ${score}`);
+            startGame();
+        }
+
+        // --- View Loop ---
+        function drawLoop() {
+            if (!gameActive) return;
+            
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY + radius*0.05, radius, radius * 0.95, 0, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(0,0,0,0.1)";
+            ctx.fill();
+
+            drawPieBase();
+
+            if (currentSlices > 1) {
+                drawSlices();
+            }
+
+            drawHighlightSlice();
+            
+            // 修改：只有在未鎖定且正在拖曳時才顯示指引線
+            if (isDragging && !isInputLocked) {
+                drawGuideLine();
+            } else if (!isInputLocked) {
+                // 未鎖定但沒拖曳 -> 顯示錨點
+                drawAnchorPoint();
+            } else {
+                // 鎖定中 (例如示範模式) -> 不顯示任何操作提示
+            }
+
+            drawCenterLabel();
+
+            requestAnimationFrame(drawLoop);
+        }
+
+        function drawPieBase() {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            let grad = ctx.createRadialGradient(centerX, centerY, radius * 0.3, centerX, centerY, radius);
+            grad.addColorStop(0, "#F9C74F");
+            grad.addColorStop(1, "#E76F51");
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.lineWidth = radius * 0.03;
+            ctx.strokeStyle = "#D35400";
+            ctx.stroke();
+        }
+
+        function drawSlices() {
+            ctx.lineWidth = radius * 0.02;
+            ctx.strokeStyle = "rgba(255, 255, 240, 0.9)";
+            ctx.lineCap = "round";
+            const step = (Math.PI * 2) / currentSlices;
+            for (let i = 0; i < currentSlices; i++) {
+                const ang = i * step;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + Math.cos(ang) * radius * 0.98, centerY + Math.sin(ang) * radius * 0.98);
+                ctx.stroke();
+            }
+        }
+
+        function drawHighlightSlice() {
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, 0, (Math.PI * 2) / currentSlices);
+            ctx.closePath();
+            
+            // 示範模式下，高亮顏色稍微不同 (藍色調)，區分學生操作
+            if (isInputLocked && !isDragging) {
+                 ctx.fillStyle = "rgba(100, 181, 246, 0.4)"; // 示範藍
+            } else {
+                 ctx.fillStyle = "rgba(255, 255, 255, 0.35)"; // 一般白
+            }
+            
+            ctx.fill();
+        }
+
+        function drawAnchorPoint() {
+            const startX = centerX + radius;
+            const startY = centerY;
+            const time = Date.now() / 500;
+            const pulse = Math.sin(time) * 5 + 15;
+            
+            ctx.beginPath();
+            ctx.arc(startX, startY, pulse, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(59, 130, 246, 0.4)";
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(startX, startY, 8, 0, Math.PI * 2);
+            ctx.fillStyle = "#2563EB";
+            ctx.fill();
+            ctx.strokeStyle = "#FFF";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawGuideLine() {
+            const guideR = radius * 1.15;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            const endX = centerX + Math.cos(dragAngle) * guideR;
+            const endY = centerY + Math.sin(dragAngle) * guideR;
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = "#3B82F6";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(endX, endY, 10, 0, Math.PI*2);
+            ctx.fillStyle = "#3B82F6";
+            ctx.fill();
+            ctx.strokeStyle = "#FFF";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        function drawCenterLabel() {
+            const labelW = radius * 0.8;
+            const labelH = radius * 0.35;
+            const labelY = centerY + radius + labelH/2 + 10;
+
+            ctx.fillStyle = "#FFFFFF";
+            ctx.shadowColor = "rgba(0,0,0,0.1)";
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 4;
+            roundRect(ctx, centerX - labelW/2, labelY - labelH/2, labelW, labelH, 15);
+            ctx.fill();
+            ctx.shadowColor = "transparent";
+            
+            // 鎖定/示範時，框線變藍色提示注意
+            if (isInputLocked) {
+                 ctx.lineWidth = 5;
+                 ctx.strokeStyle = "#2563EB"; // 深藍
+            } else {
+                 ctx.lineWidth = 3;
+                 ctx.strokeStyle = "#3B82F6";
+            }
+            
+            roundRect(ctx, centerX - labelW/2, labelY - labelH/2, labelW, labelH, 15);
+            ctx.stroke();
+
+            ctx.fillStyle = "#1E3A8A";
+            const fontSize = Math.max(24, Math.floor(radius * 0.18));
+            ctx.font = `bold ${fontSize}px 'Noto Sans TC'`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(`1 / ${currentSlices}`, centerX, labelY + fontSize*0.1);
+
+            ctx.font = `bold ${fontSize*0.5}px 'Noto Sans TC'`;
+            ctx.fillStyle = "#9CA3AF";
+            // 文字變化
+            const labelText = isInputLocked ? "正確答案" : "當前份數";
+            ctx.fillText(labelText, centerX, labelY - fontSize*0.8);
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+    </script>
+</body>
+</html>
